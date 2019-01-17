@@ -1,8 +1,7 @@
 #include <stdio.h>
-
+#include "CalendarParser.h"
 int main()
 {
-  printf("Hello World!\n");
-
+  createCalendar("calendar.ics", NULL);
   return 0;
 }
