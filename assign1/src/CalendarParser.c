@@ -3,7 +3,7 @@
 
 ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 {
-
+  return OK;
 }
 
 void deleteCalendar(Calendar* obj)
@@ -13,22 +13,22 @@ void deleteCalendar(Calendar* obj)
 
 char* printCalendar(const Calendar* obj)
 {
-
+  return "ok:";
 }
 
 char* printError(ICalErrorCode err)
 {
-
+  return null;
 }
 
 ICalErrorCode writeCalendar(char* fileName, const Calendar* obj)
 {
-
+  return null;
 }
 
 ICalErrorCode validateCalendar(const Calendar* obj)
 {
-
+  return null;
 }
 
 
