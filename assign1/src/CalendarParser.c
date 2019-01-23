@@ -1,51 +1,89 @@
 #include <stdio.h>
 #include <string.h>
+
 #include "CalendarParser.h"
+#include "CalendarParserHelper.h"
 
 ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 {
-  Calendar theCalendar;
+  //initialize and allocate memory for calendar
+  Calendar *theCalendar = malloc(sizeof(Calendar));
+
+  //open file
   FILE * fp;
   fp = fopen(fileName, "r");
-  char line[75];
 
-  while (fgets(line, sizeof(line), fp))
-  {
+
+  //process file line by lune
+  List * properties = initializeList(&printFunc, &deleteFunc, &compareFunc);
+
+  char line[75];
+  while (fgets(line, sizeof(line), fp)){
     line[strlen(line)-1] = '\0';
 
     char *token = strtok(line, ":");
+    Property * newProperty = malloc(sizeof(Property));
+    strcpy(newProperty->propName, token);
+    printf("%s\n", newProperty->propName);
+    while (token != NULL){
 
-    while (token != NULL)
-    {
-      if(strcmp(token, "VERSION") == 0)
-      {
-        token = strtok(NULL, ":");
-        theCalendar.version = atof(token);
-      }
-      else if(strcmp(token, "PRODID") == 0)
-      {
-        token = strtok(NULL, ":");
-        strcpy(theCalendar.prodID, token);
-
-      }
+      //find version
       token = strtok(NULL, ":");
+
+      if(token != NULL)  {
+
+        newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 1);
+        strcpy(newProperty->propDescr, token);
+        printf("%s\n", newProperty->propDescr);
+        if(strcmp(newProperty->propName, "VERSION") == 0)  {
+          theCalendar->version = atof(token);
+
+        }
+        //find prodId
+        else if(strcmp(newProperty->propName, "PRODID") == 0){
+          strcpy(theCalendar->prodID, token);
+
+        }
+      }
     }
+
+    //Node * propertyNode = initializeNode(newProperty);
+    //printf("Node: %s\n", ((Property*)propertyNode->data)->propName);
+    insertFront(properties, newProperty);
+    printf("List: %s\n", ((Property*)properties->head->data)->propName);
+    printf("%d\n", getLength(properties));
   }
 
   fclose(fp);
-  printf("version: %f\n", theCalendar.version);
-  printf("prodID: %s\n", theCalendar.prodID);
+  //point to the address
+  theCalendar->properties = properties;
+
+  *obj = theCalendar;
+
+
   return OK;
 }
 
 void deleteCalendar(Calendar* obj)
 {
-
+  free(obj);
 }
 
 char* printCalendar(const Calendar* obj)
 {
-  return "ok:";
+  char * calendarInfo = malloc(1000);
+  char * version = malloc(1000);
+  strcpy(calendarInfo , "Version: ");
+  snprintf(version, 5, "%f", obj->version);
+  strcat(calendarInfo, version);
+  strcat(calendarInfo, "\n");
+
+  strcat(calendarInfo , "Production ID: ");
+  strcat(calendarInfo, obj->prodID);
+  strcat(calendarInfo, "\n");
+  free(version);
+  //free(calendarInfo);
+  return calendarInfo;
 }
 
 char* printError(ICalErrorCode err)
