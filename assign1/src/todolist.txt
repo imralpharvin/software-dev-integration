@@ -1,9 +1,4 @@
 LinkedListAPI
-  deleteDataFromList
-  toString
-  ListIterator
-  nextElement
-  findElement
 CalendarParserHelper
 CalendarParser
   Memory Leaks

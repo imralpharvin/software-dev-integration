@@ -8,56 +8,56 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 {
   //initialize and allocate memory for calendar
   Calendar *theCalendar = malloc(sizeof(Calendar));
+  //initialize properties list
+  List * properties = initializeList(&printFunc, &deleteFunc, &compareFunc);
 
   //open file
   FILE * fp;
   fp = fopen(fileName, "r");
 
-
-  //process file line by lune
-  List * properties = initializeList(&printFunc, &deleteFunc, &compareFunc);
-
+  //process file line by line
   char line[75];
   while (fgets(line, sizeof(line), fp)){
+
+    //Initialize property for the line
+    Property * newProperty = malloc(sizeof(Property));
     line[strlen(line)-1] = '\0';
 
+    //Delimit by : and copy string to the prop
     char *token = strtok(line, ":");
-    Property * newProperty = malloc(sizeof(Property));
     strcpy(newProperty->propName, token);
-    printf("%s\n", newProperty->propName);
+    //printf("%s\n", newProperty->propName);
     while (token != NULL){
 
-      //find version
+      //take property name
       token = strtok(NULL, ":");
 
       if(token != NULL)  {
-
+        //reallocate for property description
         newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 1);
         strcpy(newProperty->propDescr, token);
-        printf("%s\n", newProperty->propDescr);
+        //printf("%s\n", newProperty->propDescr);
+
+        //take version
         if(strcmp(newProperty->propName, "VERSION") == 0)  {
           theCalendar->version = atof(token);
-
         }
-        //find prodId
+        //take production id
         else if(strcmp(newProperty->propName, "PRODID") == 0){
           strcpy(theCalendar->prodID, token);
-
         }
+
       }
     }
-
-    //Node * propertyNode = initializeNode(newProperty);
-    //printf("Node: %s\n", ((Property*)propertyNode->data)->propName);
-    insertFront(properties, newProperty);
-    printf("List: %s\n", ((Property*)properties->head->data)->propName);
-    printf("%d\n", getLength(properties));
+    //insert property to list
+    insertBack(properties, newProperty);
+    //printf("List: %s\n", ((Property*)properties->head->data)->propName);
+    //printf("%d\n", getLength(properties));
   }
-
+  //close files
   fclose(fp);
   //point to the address
   theCalendar->properties = properties;
-
   *obj = theCalendar;
 
 
@@ -66,24 +66,36 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 
 void deleteCalendar(Calendar* obj)
 {
+  freeList(obj->properties);
   free(obj);
 }
 
 char* printCalendar(const Calendar* obj)
 {
-  char * calendarInfo = malloc(1000);
-  char * version = malloc(1000);
-  strcpy(calendarInfo , "Version: ");
+  char * version;
+  version = (char*)malloc(sizeof(char) +5);
+  strcpy(version, "");
+  //version = (char*)realloc(version, strlen(version) + 5);
+
+  char* calendarInfo;
+  calendarInfo = (char*)malloc(sizeof(char));
+  strcpy(calendarInfo, "");
+  calendarInfo = (char*)realloc(calendarInfo, strlen(calendarInfo) + strlen("Version: ")  + 1);
+  strcat(calendarInfo , "Version: ");
   snprintf(version, 5, "%f", obj->version);
+  calendarInfo = (char*)realloc(calendarInfo, strlen(calendarInfo) + strlen(version) + strlen("Production ID: ") + strlen(obj->prodID) + 5);
   strcat(calendarInfo, version);
   strcat(calendarInfo, "\n");
-
   strcat(calendarInfo , "Production ID: ");
   strcat(calendarInfo, obj->prodID);
   strcat(calendarInfo, "\n");
+
+  printf("%s", calendarInfo);
+  printf("%s", toString(obj->properties));
   free(version);
-  //free(calendarInfo);
-  return calendarInfo;
+  free(calendarInfo);
+
+  return "FIX THIS\n";
 }
 
 char* printError(ICalErrorCode err)
