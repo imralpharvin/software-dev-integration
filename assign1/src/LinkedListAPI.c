@@ -272,10 +272,11 @@ char* toString(List * list){
 	void* elem;
 	while((elem = nextElement(&iter)) != NULL){
 		char* currDescr = list->printData(elem);
-		int newLen = strlen(str)+50+strlen(currDescr);
+		//int newLen = strlen(str)+50+strlen(currDescr);
+    int newLen = strlen(str)+ 2 +strlen(currDescr);
 		str = (char*)realloc(str, newLen);
-		strcat(str, "\n");
 		strcat(str, currDescr);
+    strcat(str, "\n");
 
 		free(currDescr);
 	}

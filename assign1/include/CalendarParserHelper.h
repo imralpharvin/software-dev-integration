@@ -5,11 +5,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "LinkedListAPI.h"
 
-char* printFunc(void *toBePrinted);
+List * icsParser(char * fileName);
 
-int compareFunc(const void *first, const void *second);
+char* printContentLine(void *toBePrinted);
 
-void deleteFunc(void *toBeDeleted);
+int compareContentLine(const void *first, const void *second);
+
+void deleteContentLine(void *toBeDeleted);
 
 #endif

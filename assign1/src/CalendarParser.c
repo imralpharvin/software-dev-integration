@@ -9,22 +9,22 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
   //initialize and allocate memory for calendar
   Calendar *theCalendar = malloc(sizeof(Calendar));
   //initialize properties list
-  List * properties = initializeList(&printFunc, &deleteFunc, &compareFunc);
+  List * properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
 
-  //open file
-  FILE * fp;
-  fp = fopen(fileName, "r");
+  //Load contentlines to list
+  List * contentLines = icsParser(fileName);
 
-  //process file line by line
-  char line[75];
-  while (fgets(line, sizeof(line), fp)){
+  ListIterator iter = createIterator(contentLines);
 
+	void* elem;
+	while((elem = nextElement(&iter)) != NULL){
+    char* currDescr = contentLines->printData(elem);
     //Initialize property for the line
     Property * newProperty = malloc(sizeof(Property));
-    line[strlen(line)-1] = '\0';
 
     //Delimit by : and copy string to the prop
-    char *token = strtok(line, ":");
+    char *token = strtok(currDescr, ":");
+
     strcpy(newProperty->propName, token);
     //printf("%s\n", newProperty->propName);
     while (token != NULL){
@@ -47,15 +47,17 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
           strcpy(theCalendar->prodID, token);
         }
 
+
       }
     }
     //insert property to list
     insertBack(properties, newProperty);
-    //printf("List: %s\n", ((Property*)properties->head->data)->propName);
-    //printf("%d\n", getLength(properties));
+
+    free(currDescr);
   }
-  //close files
-  fclose(fp);
+
+  freeList(contentLines);
+
   //point to the address
   theCalendar->properties = properties;
   *obj = theCalendar;
@@ -90,12 +92,15 @@ char* printCalendar(const Calendar* obj)
   strcat(calendarInfo, obj->prodID);
   strcat(calendarInfo, "\n");
 
-  printf("%s", calendarInfo);
-  printf("%s", toString(obj->properties));
-  free(version);
-  free(calendarInfo);
+  char* toPrint = toString(obj->properties);
+  calendarInfo = (char*)realloc(calendarInfo, strlen(calendarInfo) + strlen(toPrint) + 1);
+  strcat(calendarInfo, toPrint);
 
-  return "FIX THIS\n";
+  free(version);
+
+  free(toPrint);
+
+  return calendarInfo;
 }
 
 char* printError(ICalErrorCode err)
@@ -143,7 +148,7 @@ char* printAlarm(void* toBePrinted)
 
 void deleteProperty(void* toBeDeleted)
 {
-
+  free((Property*)toBeDeleted);
 }
 int compareProperties(const void* first, const void* second)
 {
@@ -151,7 +156,14 @@ int compareProperties(const void* first, const void* second)
 }
 char* printProperty(void* toBePrinted)
 {
-  return NULL;
+  char * propName = ((Property*)toBePrinted)->propName;
+  char * propDescr = ((Property*)toBePrinted)->propDescr;
+  char * toString = malloc(sizeof(char) *(strlen(propName) + strlen(propDescr) + 3));
+  strcpy(toString, propName);
+  strcat(toString, ":");
+  strcat(toString, propDescr);
+  return toString;
+
 }
 
 void deleteDate(void* toBeDeleted)
