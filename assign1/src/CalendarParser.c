@@ -10,23 +10,95 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
   Calendar *theCalendar = malloc(sizeof(Calendar));
   //initialize properties list
   List * properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
+  List * events = initializeList(&printEvent, &deleteEvent, &compareEvents);
 
   //Load contentlines to list
   List * contentLines = icsParser(fileName);
-
   ListIterator iter = createIterator(contentLines);
 
+  //Get the first element and see if it begins with v calendar
 	void* elem;
-	while((elem = nextElement(&iter)) != NULL){
-    char* currDescr = contentLines->printData(elem);
-    //Initialize property for the line
-    Property * newProperty = malloc(sizeof(Property));
+  elem = nextElement(&iter);
+  char* firstLine = contentLines->printData(elem);
+  if(strcmp(firstLine, "BEGIN:VCALENDAR") == 0)
+  {
+    free(firstLine);
+  }
+  else
+  {
+    return INV_FILE;
+  }
 
+	while((elem = nextElement(&iter)) != NULL){
+    char * currDescr = contentLines->printData(elem);
+    if(strcmp(currDescr, "END:VCALENDAR") == 0 )
+    {
+      free(currDescr);
+      break;
+    }
     //Delimit by : and copy string to the prop
     char *token = strtok(currDescr, ":");
 
+
+    if(strcmp(token, "VERSION") == 0)
+    {
+      Property * newProperty = malloc(sizeof(Property));
+      strcpy(newProperty->propName, token);
+      token = strtok(NULL, ":");
+      newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 1);
+      strcpy(newProperty->propDescr, token);
+      theCalendar->version = atof(token);
+      insertBack(properties, newProperty);
+    }
+
+    else if(strcmp(token, "PRODID") == 0)
+    {
+      Property * newProperty = malloc(sizeof(Property));
+      strcpy(newProperty->propName, token);
+      token = strtok(NULL, ":");
+      newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 1);
+      strcpy(newProperty->propDescr, token);
+      strcpy(theCalendar->prodID, token);
+      insertBack(properties, newProperty);
+    }
+
+    else if(strcmp(token, "BEGIN") == 0)
+    {
+      token = strtok(NULL, ":");
+      if(strcmp(token, "VEVENT") == 0)
+      {
+          List * eventLines = initializeList(&printContentLine, &deleteContentLine, compareContentLine);
+          Event * newEvent = malloc(sizeof(Event));
+          //List * eventProperties = initializeList(&printProperty, &deleteProperty, &compareProperties);
+
+          while((elem = nextElement(&iter)) != NULL)
+          {
+            char * eventLine = contentLines->printData(elem);
+            insertBack(eventLines, eventLine);
+            if(strcmp(eventLine, "END:VEVENT") ==0 )
+            {
+              free(eventLine);
+              break;
+            }
+            free(eventLine);
+
+          }
+
+          insertBack(events, newEvent);
+
+
+
+
+      }
+
+    }
+
+    /*
+    Property * newProperty = malloc(sizeof(Property));
     strcpy(newProperty->propName, token);
     //printf("%s\n", newProperty->propName);
+
+    //Initialize property for the line
     while (token != NULL){
 
       //take property name
@@ -54,9 +126,12 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
     insertBack(properties, newProperty);
 
     free(currDescr);
+    */
+    free(currDescr);
   }
 
   freeList(contentLines);
+  freeList(events);
 
   //point to the address
   theCalendar->properties = properties;
@@ -68,6 +143,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 
 void deleteCalendar(Calendar* obj)
 {
+  freeList(obj->events);
   freeList(obj->properties);
   free(obj);
 }

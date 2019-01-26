@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "CalendarParserHelper.h"
 #include "CalendarParser.h"
+#include "CalendarParserHelper.h"
+
 
 List * icsParser(char * fileName)
 {
@@ -45,6 +46,11 @@ List * icsParser(char * fileName)
 
   fclose(fp);
   return contentLines;
+}
+
+Event * createEvent(List * eventLines)
+{
+
 }
 
 char* printContentLine(void *toBePrinted){

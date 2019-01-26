@@ -9,6 +9,8 @@
 
 List * icsParser(char * fileName);
 
+Event * createEvent(List * eventLines);
+
 char* printContentLine(void *toBePrinted);
 
 int compareContentLine(const void *first, const void *second);
