@@ -9,6 +9,10 @@
 
 List * icsParser(char * fileName);
 
+DateTime * createDateTime (char * dtLine);
+
+Property * createProperty(char * contentLine);
+
 Event * createEvent(List * eventLines);
 
 char* printContentLine(void *toBePrinted);

@@ -4,7 +4,6 @@
 #include "CalendarParser.h"
 #include "CalendarParserHelper.h"
 
-
 List * icsParser(char * fileName)
 {
   FILE * fp;
@@ -48,9 +47,99 @@ List * icsParser(char * fileName)
   return contentLines;
 }
 
+DateTime * createDateTime (char * dtLine)
+{
+  DateTime * newDateTime = malloc(sizeof(DateTime)) ;
+
+  char * token = strtok(dtLine, "T");
+  strcpy(newDateTime->date, token);
+
+  token = strtok(NULL, "T");
+  printf("%s\n", token);
+
+
+
+  strcpy(newDateTime->time, token);
+  if(token[6] == 'Z' )
+  {
+    printf("BEFORE: %s\n", newDateTime->time);
+    newDateTime->UTC = true;
+    printf("AFTER: %s\n", newDateTime->time);
+  }
+
+
+
+
+
+
+  return newDateTime;
+}
+Property * createProperty(char * contentLine)
+{
+  Property * newProperty = malloc(sizeof(Property));
+
+  char *token = strtok(contentLine, ":");
+
+  strcpy(newProperty->propName, token);
+  token = strtok(NULL, ":");
+
+  newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 2);
+  strcpy(newProperty->propDescr, token);
+  return newProperty;
+}
+
 Event * createEvent(List * eventLines)
 {
+  Event * newEvent = malloc(sizeof(Event));
+  List * eventProperties = initializeList(&printProperty, &deleteProperty, &compareProperties);
 
+  ListIterator iter = createIterator(eventLines);
+  void* elem;
+  while((elem = nextElement(&iter)) != NULL){
+    char * currDescr = eventLines->printData(elem);
+
+    if(strcmp(currDescr, "END:VEVENT") == 0 )
+    {
+      free(currDescr);
+      break;
+    }
+
+    Property * eventProperty = createProperty(currDescr);
+    insertBack(eventProperties, eventProperty);
+
+    free(currDescr);
+  }
+
+  ListIterator iterProp = createIterator(eventProperties);
+  void* prop;
+  while((prop = nextElement(&iterProp)) != NULL){
+    char * currDescr = eventProperties->printData(prop);
+    char *token = strtok(currDescr, ":");
+
+    if(strcmp(token, "UID") == 0)
+    {
+      token = strtok(NULL, ":");
+      strcpy(newEvent->UID, token);
+      printf("UID: %s\n", newEvent->UID);
+    }
+
+    if(strcmp(token, "DTSTAMP") == 0)
+    {
+      token = strtok(NULL, ":");
+      DateTime * dtStamp = createDateTime(token);
+      newEvent->creationDateTime = *dtStamp;
+
+      printf("DTstampdate: %s\n", newEvent->creationDateTime.date);
+      printf("DTstamptime: %s\n", newEvent->creationDateTime.time);
+      printf("DTstamputc: %d\n", newEvent->creationDateTime.UTC);
+      printf("DTstamputc: %s\n", newEvent->creationDateTime.UTC ? "true" : "false");
+    }
+  }
+
+
+  newEvent->properties = eventProperties;
+
+  return newEvent;
 }
 
 char* printContentLine(void *toBePrinted){

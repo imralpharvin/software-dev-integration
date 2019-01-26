@@ -42,24 +42,22 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 
     if(strcmp(token, "VERSION") == 0)
     {
-      Property * newProperty = malloc(sizeof(Property));
-      strcpy(newProperty->propName, token);
-      token = strtok(NULL, ":");
-      newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 1);
-      strcpy(newProperty->propDescr, token);
-      theCalendar->version = atof(token);
+
+      char * propertyLine = contentLines->printData(elem);
+      Property * newProperty = createProperty(propertyLine);
+      theCalendar->version = atof(newProperty->propDescr);
       insertBack(properties, newProperty);
+      free(propertyLine);
     }
 
     else if(strcmp(token, "PRODID") == 0)
     {
-      Property * newProperty = malloc(sizeof(Property));
-      strcpy(newProperty->propName, token);
-      token = strtok(NULL, ":");
-      newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 1);
-      strcpy(newProperty->propDescr, token);
-      strcpy(theCalendar->prodID, token);
+      char * propertyLine = contentLines->printData(elem);
+      Property * newProperty = createProperty(propertyLine);
+
+      strcpy(theCalendar->prodID, newProperty->propDescr);
       insertBack(properties, newProperty);
+      free(propertyLine);
     }
 
     else if(strcmp(token, "BEGIN") == 0)
@@ -68,8 +66,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
       if(strcmp(token, "VEVENT") == 0)
       {
           List * eventLines = initializeList(&printContentLine, &deleteContentLine, compareContentLine);
-          Event * newEvent = malloc(sizeof(Event));
-          //List * eventProperties = initializeList(&printProperty, &deleteProperty, &compareProperties);
+
 
           while((elem = nextElement(&iter)) != NULL)
           {
@@ -77,63 +74,30 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
             insertBack(eventLines, eventLine);
             if(strcmp(eventLine, "END:VEVENT") ==0 )
             {
-              free(eventLine);
+              //free(eventLine);
               break;
             }
-            free(eventLine);
+            //free(eventLine);
 
           }
 
+          Event * newEvent = createEvent(eventLines);
           insertBack(events, newEvent);
 
-
+          freeList(eventLines);
 
 
       }
 
     }
-
-    /*
-    Property * newProperty = malloc(sizeof(Property));
-    strcpy(newProperty->propName, token);
-    //printf("%s\n", newProperty->propName);
-
-    //Initialize property for the line
-    while (token != NULL){
-
-      //take property name
-      token = strtok(NULL, ":");
-
-      if(token != NULL)  {
-        //reallocate for property description
-        newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 1);
-        strcpy(newProperty->propDescr, token);
-        //printf("%s\n", newProperty->propDescr);
-
-        //take version
-        if(strcmp(newProperty->propName, "VERSION") == 0)  {
-          theCalendar->version = atof(token);
-        }
-        //take production id
-        else if(strcmp(newProperty->propName, "PRODID") == 0){
-          strcpy(theCalendar->prodID, token);
-        }
-
-
-      }
-    }
-    //insert property to list
-    insertBack(properties, newProperty);
-
-    free(currDescr);
-    */
     free(currDescr);
   }
 
+
   freeList(contentLines);
-  freeList(events);
 
   //point to the address
+  theCalendar->events = events;
   theCalendar->properties = properties;
   *obj = theCalendar;
 
@@ -198,7 +162,8 @@ ICalErrorCode validateCalendar(const Calendar* obj)
 // ************* List helper functions - MUST be implemented ***************
 void deleteEvent(void* toBeDeleted)
 {
-
+  freeList(((Event*)toBeDeleted)->properties);
+  free(toBeDeleted);
 }
 int compareEvents(const void* first, const void* second)
 {
