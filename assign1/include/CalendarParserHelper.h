@@ -15,6 +15,8 @@ Property * createProperty(char * contentLine);
 
 Event * createEvent(List * eventLines);
 
+Alarm * createAlarm(List * alarmLines);
+
 char* printContentLine(void *toBePrinted);
 
 int compareContentLine(const void *first, const void *second);

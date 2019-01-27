@@ -67,17 +67,17 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
       {
           List * eventLines = initializeList(&printContentLine, &deleteContentLine, compareContentLine);
 
-
           while((elem = nextElement(&iter)) != NULL)
           {
             char * eventLine = contentLines->printData(elem);
-            insertBack(eventLines, eventLine);
+
             if(strcmp(eventLine, "END:VEVENT") ==0 )
             {
-              //free(eventLine);
+              free(eventLine);
               break;
             }
             //free(eventLine);
+            insertBack(eventLines, eventLine);
 
           }
 
@@ -136,8 +136,12 @@ char* printCalendar(const Calendar* obj)
   calendarInfo = (char*)realloc(calendarInfo, strlen(calendarInfo) + strlen(toPrint) + 1);
   strcat(calendarInfo, toPrint);
 
+  char* eventPrint = toString(obj->events);
+  calendarInfo = (char*)realloc(calendarInfo, strlen(calendarInfo) + strlen(eventPrint) + 1);
+  strcat(calendarInfo, eventPrint);
+  //char * eventProperties = toString(obj)
   free(version);
-
+  free(eventPrint);
   free(toPrint);
 
   return calendarInfo;
@@ -162,7 +166,9 @@ ICalErrorCode validateCalendar(const Calendar* obj)
 // ************* List helper functions - MUST be implemented ***************
 void deleteEvent(void* toBeDeleted)
 {
-  freeList(((Event*)toBeDeleted)->properties);
+  Event * delete = (Event*)toBeDeleted;
+  freeList(delete->properties);
+  freeList(delete->alarms);
   free(toBeDeleted);
 }
 int compareEvents(const void* first, const void* second)
@@ -171,12 +177,32 @@ int compareEvents(const void* first, const void* second)
 }
 char* printEvent(void* toBePrinted)
 {
-  return NULL;
+  Event * theEvent = (Event*)toBePrinted;
+
+  char * toPrint  = (char*)malloc(sizeof(char)*8);
+  strcpy(toPrint, "Event:\n");
+
+  char * properties = toString(theEvent->properties);
+  toPrint = (char*)realloc(toPrint, strlen(toPrint) + strlen(properties)  + 1);
+  strcat(toPrint, properties);
+
+  char * alarms = toString(theEvent->alarms);
+  toPrint = (char*)realloc(toPrint, strlen(toPrint) + strlen(alarms)  + 1);
+  strcat(toPrint, alarms);
+
+  free(properties);
+  free(alarms);
+
+//  print("%s", toPrint);
+
+  return toPrint;
 }
 
 void deleteAlarm(void* toBeDeleted)
 {
-
+  Alarm * toDelete = (Alarm *)toBeDeleted;
+  freeList(toDelete->properties);
+  free(toBeDeleted);
 }
 int compareAlarms(const void* first, const void* second)
 {
@@ -184,7 +210,18 @@ int compareAlarms(const void* first, const void* second)
 }
 char* printAlarm(void* toBePrinted)
 {
-  return NULL;
+  Alarm * theAlarm = (Alarm*)toBePrinted;
+
+  char * toPrint  = (char*)malloc(sizeof(char)*8);
+  strcpy(toPrint, "Alarm:\n");
+
+  char * properties = toString(theAlarm->properties);
+  toPrint = (char*)realloc(toPrint, strlen(toPrint) + strlen(properties)  + 1);
+  strcat(toPrint, properties);
+
+  free(properties);
+
+  return toPrint;
 }
 
 void deleteProperty(void* toBeDeleted)
@@ -209,7 +246,7 @@ char* printProperty(void* toBePrinted)
 
 void deleteDate(void* toBeDeleted)
 {
-
+  free(toBeDeleted);
 }
 int compareDates(const void* first, const void* second)
 {

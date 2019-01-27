@@ -6,7 +6,10 @@ int main()
 
   Calendar * pCalendar;
 
-  createCalendar("calendar.ics", &pCalendar);
+  //createCalendar("testCalEvtProp.ics", &pCalendar);
+  createCalendar("testCalEvtPropAlm.ics", &pCalendar);
+
+  //createCalendar("calendar.ics", &pCalendar);
 
   char * calendarInfo = printCalendar(pCalendar);
   printf("%s" ,calendarInfo);
