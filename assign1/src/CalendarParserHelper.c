@@ -4,6 +4,75 @@
 #include "CalendarParser.h"
 #include "CalendarParserHelper.h"
 
+bool checkFile (char * filename)
+{
+  if(filename == NULL || strlen(filename) == 0)
+  {
+    return false;
+  }
+
+  FILE * fp;
+  fp = fopen(filename, "r");
+  if (fp)
+  {
+    fclose(fp);
+  }
+  else
+  {
+    printf("FILE DOES NOT EXIST");
+    return false;
+  }
+
+  char * string = malloc(strlen(filename) + 1);
+  strcpy(string, filename);
+
+  char * token = strtok(string, ".");
+
+  token = strtok(NULL, ".");
+  printf("TOKEN: %s\n", token );
+
+  if(strcmp(token, "ics") != 0)
+  {
+    printf("INVALID EXTENSION\n");
+    free(string);
+    return false;
+
+  }
+  free(string);
+
+  FILE * file = fopen(filename, "r");
+  char line[100];
+  fgets(line, sizeof(line), file);
+  if( line[strlen(line)-2] != '\r' || line[strlen(line)-1] != '\n')
+  {
+
+    printf("INVALID LINE ENDINGS\n");
+    fclose(file);
+    return false;
+  }
+
+  fclose(file);
+
+  return true;
+}
+
+bool checkCalendar(List * contentLines)
+{
+  char * firstLine = contentLines->printData(contentLines->head->data);
+  char * lastLine = contentLines->printData(contentLines->tail->data);
+
+  if(strcmp(firstLine, "BEGIN:VCALENDAR") != 0 || strcmp(lastLine, "END:VCALENDAR") != 0)
+  {
+    printf("WRONG TAGS\n");
+    return false;
+  }
+
+  printf("FIRST: %s\n", firstLine);
+  printf("LAST: %s\n", lastLine);
+
+  return true;
+}
+
 List * icsParser(char * fileName)
 {
   FILE * fp;
@@ -31,12 +100,14 @@ List * icsParser(char * fileName)
     contentLine = malloc(strlen(line) + 1);
     strcpy(contentLine, line);
 
-    if(line[0] == ' '){
+    if(line[0] == ' ')
+    {
       previousLine = realloc(previousLine, strlen(contentLine) + strlen(previousLine) + 2);
       strcat(previousLine, contentLine);
       free(contentLine);
     }
-    else{
+    else
+    {
       if(count > 0)
       {
         insertBack(contentLines, previousLine);
@@ -57,21 +128,37 @@ List * icsParser(char * fileName)
 
 DateTime * createDateTime (char * dtLine)
 {
+  //allocate memory for date time struct
   DateTime * newDateTime = malloc(sizeof(DateTime)) ;
 
-  char * token = strtok(dtLine, "T");
+  //Split string
+  char * string = malloc(strlen(dtLine) + 1);
+  strcpy(string, dtLine);
+
+  char * token = strtok(string, "T");
   strcpy(newDateTime->date, token);
 
   token = strtok(NULL, "\n");
-  //printf("%s\n", token);
 
   strcpy(newDateTime->time, token);
-  if(token[6] == 'Z' )
+
+  if(newDateTime->time[6] == 'Z' )
   {
     printf("BEFORE: %s\n", newDateTime->time);
-    //newDateTime->UTC = true;
-    printf("AFTER: %s\n", newDateTime->time);
+    printf("BEFORE: %s\n", newDateTime->date);
+    printf("%lu\n", strlen(newDateTime->time));
+    char * copy = malloc(strlen(newDateTime->time) + 1);
+    strcpy(copy, newDateTime->time);
+    newDateTime->UTC = true;
+
+    strcpy(newDateTime->time, copy);
+    printf("AFTER2: %s\n", newDateTime->time);
+    printf("AFTER: %s\n", newDateTime->date);
+    printf("%lu\n", strlen(newDateTime->time));
+
+    free(copy);
   }
+  free(string);
 
   return newDateTime;
 }
@@ -173,7 +260,7 @@ Event * createEvent(List * eventLines)
       newEvent->creationDateTime = *dtStamp;
 
       deleteDate(dtStamp);
-      /*
+/*
       printf("DTstampdate: %s\n", newEvent->creationDateTime.date);
       printf("DTstamptime: %s\n", newEvent->creationDateTime.time);
       printf("DTstamputc: %d\n", newEvent->creationDateTime.UTC);

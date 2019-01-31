@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include "LinkedListAPI.h"
 
+bool checkFile (char * filename);
+
+bool checkCalendar (List * contentLines);
+
 List * icsParser(char * fileName);
 
 DateTime * createDateTime (char * dtLine);

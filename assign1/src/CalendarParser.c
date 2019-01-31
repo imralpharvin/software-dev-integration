@@ -6,14 +6,23 @@
 
 ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 {
+
+  if(checkFile(fileName) == false)
+  {
+    printf("ERROR\n");
+    return INV_FILE;
+  }
+
   //initialize and allocate memory for calendar
-  Calendar *theCalendar = malloc(sizeof(Calendar));
-  //initialize properties list
-  List * properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
-  List * events = initializeList(&printEvent, &deleteEvent, &compareEvents);
 
   //Load contentlines to list
   List * contentLines = icsParser(fileName);
+
+  if(checkCalendar(contentLines) == false)
+  {
+    return INV_CAL;
+
+  }
   ListIterator iter = createIterator(contentLines);
 
   //Get the first element and see if it begins with v calendar
@@ -26,8 +35,17 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
   }
   else
   {
-    return INV_FILE;
+    printf("INVALID BEGINNING TAG\n");
+    freeList(contentLines);
+    free(firstLine);
+    return INV_CAL;
   }
+
+  Calendar *theCalendar = malloc(sizeof(Calendar));
+  //initialize properties list
+  List * properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
+  List * events = initializeList(&printEvent, &deleteEvent, &compareEvents);
+
 
 	while((elem = nextElement(&iter)) != NULL){
     char * currDescr = contentLines->printData(elem);
@@ -38,7 +56,6 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
     }
     //Delimit by : and copy string to the prop
     char *token = strtok(currDescr, ":");
-
 
     if(strcmp(token, "VERSION") == 0)
     {
@@ -85,22 +102,16 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
           insertBack(events, newEvent);
 
           freeList(eventLines);
-
-
       }
-
     }
     free(currDescr);
   }
-
-
   freeList(contentLines);
 
   //point to the address
   theCalendar->events = events;
   theCalendar->properties = properties;
   *obj = theCalendar;
-
 
   return OK;
 }
@@ -192,8 +203,6 @@ char* printEvent(void* toBePrinted)
 
   free(properties);
   free(alarms);
-
-//  print("%s", toPrint);
 
   return toPrint;
 }
