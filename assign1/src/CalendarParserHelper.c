@@ -64,11 +64,13 @@ bool checkCalendar(List * contentLines)
   if(strcmp(firstLine, "BEGIN:VCALENDAR") != 0 || strcmp(lastLine, "END:VCALENDAR") != 0)
   {
     printf("WRONG TAGS\n");
+    free(firstLine);
+    free(lastLine);
     return false;
   }
 
-  printf("FIRST: %s\n", firstLine);
-  printf("LAST: %s\n", lastLine);
+  free(firstLine);
+  free(lastLine);
 
   return true;
 }
@@ -85,10 +87,10 @@ List * icsParser(char * fileName)
   List * contentLines = initializeList(&printContentLine, &deleteContentLine, compareContentLine);
   char * previousLine;
   char * contentLine;
-  int count = 0;
+  bool folded = false;
   while (fgets(line, sizeof(line), fp)){
 
-    if(  line[strlen(line)-2] == '\r')
+    if(line[strlen(line)-2] == '\r')
     {
       line[strlen(line)-2] = '\0';
     }
@@ -100,27 +102,35 @@ List * icsParser(char * fileName)
     contentLine = malloc(strlen(line) + 1);
     strcpy(contentLine, line);
 
-    if(line[0] == ' ')
+    //If theres a space or tab
+    if(line[0] == ' ' || line[0] == '\t')
     {
-      previousLine = realloc(previousLine, strlen(contentLine) + strlen(previousLine) + 2);
-      strcat(previousLine, contentLine);
+      char *ps = line;
+      ps++;
+
+      //printf("%s\n", ps);
+      previousLine = realloc(previousLine, strlen(ps) + strlen(previousLine) + 2);
+      strcat(previousLine, ps);
       free(contentLine);
     }
-    else
+    else //No space or tab
     {
-      if(count > 0)
+      //if everything is folded already
+      if(folded == true)
       {
         insertBack(contentLines, previousLine);
-      //Point previous to current if no new line
+        folded = false;
       }
       previousLine = malloc(strlen(contentLine) + 1);
       strcpy(previousLine, contentLine);
       free(contentLine);
+      folded = true;
       //Insert content line
-      count ++;
     }
   }
   insertBack(contentLines, previousLine);
+
+  //printf("CONTENT LINES\n\n%s\n*********\n", toString(contentLines));
 
   fclose(fp);
   return contentLines;
@@ -144,18 +154,12 @@ DateTime * createDateTime (char * dtLine)
 
   if(newDateTime->time[6] == 'Z' )
   {
-    printf("BEFORE: %s\n", newDateTime->time);
-    printf("BEFORE: %s\n", newDateTime->date);
-    printf("%lu\n", strlen(newDateTime->time));
+
     char * copy = malloc(strlen(newDateTime->time) + 1);
     strcpy(copy, newDateTime->time);
     newDateTime->UTC = true;
 
     strcpy(newDateTime->time, copy);
-    printf("AFTER2: %s\n", newDateTime->time);
-    printf("AFTER: %s\n", newDateTime->date);
-    printf("%lu\n", strlen(newDateTime->time));
-
     free(copy);
   }
   free(string);
@@ -195,6 +199,31 @@ Event * createEvent(List * eventLines)
       free(currDescr);
       break;
     }
+    else if((strcmp(token, "UID") == 0))
+    {
+      token = strtok(NULL, "\n");
+      strcpy(newEvent->UID, token);
+      //printf("UID: %s\n", newEvent->UID);
+    }
+    else if(strcmp(token, "DTSTAMP") == 0)
+    {
+      token = strtok(NULL, "\n");
+      DateTime * dtStamp = createDateTime(token);
+      newEvent->creationDateTime = *dtStamp;
+
+      deleteDate(dtStamp);
+    }
+
+    else if(strcmp(token, "DTSTART") == 0)
+    {
+      token = strtok(NULL, "\n");
+      DateTime * dtStart = createDateTime(token);
+      newEvent->startDateTime = *dtStart;
+
+      deleteDate(dtStart);
+    }
+
+
     else if(strcmp(token, "BEGIN") == 0)
     {
       token = strtok(NULL, "\n");
@@ -209,11 +238,8 @@ Event * createEvent(List * eventLines)
             insertBack(alarmLines, alarmLine);
             if(strcmp(alarmLine, "END:VALARM") ==0 )
             {
-              //free(eventLine);
-
               break;
             }
-            //free(eventLine);
 
           }
 
@@ -239,6 +265,7 @@ Event * createEvent(List * eventLines)
 
 
 //PART B VALUES
+/*
 
   ListIterator iterProp = createIterator(eventProperties);
   void* prop;
@@ -260,11 +287,7 @@ Event * createEvent(List * eventLines)
       newEvent->creationDateTime = *dtStamp;
 
       deleteDate(dtStamp);
-/*
-      printf("DTstampdate: %s\n", newEvent->creationDateTime.date);
-      printf("DTstamptime: %s\n", newEvent->creationDateTime.time);
-      printf("DTstamputc: %d\n", newEvent->creationDateTime.UTC);
-      printf("DTstamputc: %s\n", newEvent->creationDateTime.UTC ? "true" : "false");*/
+
     }
 
     if(strcmp(token, "DTSTART") == 0)
@@ -274,15 +297,12 @@ Event * createEvent(List * eventLines)
       newEvent->startDateTime = *dtStart;
 
 
-      /*printf("DTstampdate: %s\n", newEvent->startDateTime.date);
-      printf("DTstamptime: %s\n", newEvent->startDateTime.time);
-      printf("DTstamputc: %d\n", newEvent->startDateTime.UTC);
-      printf("DTstamputc: %s\n", newEvent->startDateTime.UTC ? "true" : "false");*/
+
       deleteDate(dtStart);
     }
 
     free(currDescr);
-  }
+  }*/
 
 
   newEvent->properties = eventProperties;
@@ -301,27 +321,47 @@ Alarm * createAlarm(List * alarmLines)
   void* elem;
   while((elem = nextElement(&iter)) != NULL){
     char * currDescr = alarmLines->printData(elem);
+    char * propertyLine = alarmLines->printData(elem);
 
     if(strcmp(currDescr, "END:VALARM") == 0 )
     {
       free(currDescr);
+      free(propertyLine);
       break;
     }
 
-    Property * alarmProperty = createProperty(currDescr);
-    insertBack(alarmProperties, alarmProperty);
+    char *token = strtok(currDescr, ":");
+    if(strcmp(token, "TRIGGER") == 0)
+    {
+      token = strtok(NULL, "\n");
+      char * trigger = malloc(sizeof(char)*strlen(token) + 1);
+      strcpy(trigger, token);
+      strcpy(newAlarm->trigger, trigger);
+      //printf("UID: %s\n", newEvent->UID);
+    }
+    else if(strcmp(token, "ACTION") == 0)
+    {
+      token = strtok(NULL, "\n");
+      //DateTime * dtStamp = createDateTime(token);
+      strcpy(newAlarm->action,token);
+      //printf("ACTIOOON: %s\n", newAlarm->action );
+    }
+    else
+    {
+      Property * alarmProperty = createProperty(propertyLine);
+      insertBack(alarmProperties, alarmProperty);
 
 
+    }
 
-
+    free(propertyLine);
     free(currDescr);
 
   }
 
-
-
   newAlarm->properties = alarmProperties;
 
+/*
   ListIterator iterProp = createIterator(alarmProperties);
   void* prop;
   while((prop = nextElement(&iterProp)) != NULL){
@@ -343,12 +383,9 @@ Alarm * createAlarm(List * alarmLines)
       //DateTime * dtStamp = createDateTime(token);
       strcpy(newAlarm->action,token);
       //printf("ACTIOOON: %s\n", newAlarm->action );
-
     }
-
-
     free(currDescr);
-  }
+  }*/
   //printf("Length: %d\n", getLength(alarmProperties));
   return newAlarm;
 

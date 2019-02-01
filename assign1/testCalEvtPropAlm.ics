@@ -8,8 +8,13 @@ DTSTAMP:20160106T145812Z
 UID:332414a0-54a1-408b-9cb1-2c9d1ad3696d
 SUMMARY:Han Solo @ Naboo
 STATUS:CONFIRMED
-ORGANIZER;CN=Obi-Wan Kenobi;mailto:laowaion@padawan.com
+ORGANIZER;CN=Obi-Wan Keno
+ bi;mailto:laowa
+ ion@padawan.com
 DTSTART:20151002T100000Z
+ORGANIZER;CN=Obi-Wan Keno
+ bi;mailto:laowa
+ ion@padawan.com
 DTEND:20151002T110000
 BEGIN:VALARM
 TRIGGER;VALUE=DATE-TIME:19970317T133000Z
@@ -26,4 +31,5 @@ ACTION:AUDIO
 ATTACH;FMTTYPE=audio/basic:ftp://example.com/pub/sounds/bell-02.aud
 END:VALARM
 END:VEVENT
+REPEAT:4
 END:VCALENDAR

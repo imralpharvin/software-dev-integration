@@ -63,7 +63,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
       char * propertyLine = contentLines->printData(elem);
       Property * newProperty = createProperty(propertyLine);
       theCalendar->version = atof(newProperty->propDescr);
-      insertBack(properties, newProperty);
+      deleteProperty(newProperty);
       free(propertyLine);
     }
 
@@ -73,7 +73,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
       Property * newProperty = createProperty(propertyLine);
 
       strcpy(theCalendar->prodID, newProperty->propDescr);
-      insertBack(properties, newProperty);
+      deleteProperty(newProperty);
       free(propertyLine);
     }
 
@@ -87,7 +87,6 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
           while((elem = nextElement(&iter)) != NULL)
           {
             char * eventLine = contentLines->printData(elem);
-
             if(strcmp(eventLine, "END:VEVENT") ==0 )
             {
               free(eventLine);
@@ -95,7 +94,6 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
             }
             //free(eventLine);
             insertBack(eventLines, eventLine);
-
           }
 
           Event * newEvent = createEvent(eventLines);
@@ -104,6 +102,15 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
           freeList(eventLines);
       }
     }
+    else
+    {
+      char * propertyLine = contentLines->printData(elem);
+      Property * newProperty = createProperty(propertyLine);
+
+      insertBack(properties, newProperty);
+      free(propertyLine);
+    }
+
     free(currDescr);
   }
   freeList(contentLines);
@@ -127,12 +134,10 @@ char* printCalendar(const Calendar* obj)
 {
   char * version;
   version = (char*)malloc(sizeof(char) +5);
-  strcpy(version, "");
-  //version = (char*)realloc(version, strlen(version) + 5);
 
   char* calendarInfo;
-  calendarInfo = (char*)malloc(sizeof(char));
-  strcpy(calendarInfo, "");
+  calendarInfo = (char*)malloc(sizeof(char) * 16);
+  strcpy(calendarInfo, "YOUR CALENDAR\n\n");
   calendarInfo = (char*)realloc(calendarInfo, strlen(calendarInfo) + strlen("Version: ")  + 1);
   strcat(calendarInfo , "Version: ");
   snprintf(version, 5, "%f", obj->version);
@@ -190,8 +195,8 @@ char* printEvent(void* toBePrinted)
 {
   Event * theEvent = (Event*)toBePrinted;
 
-  char * toPrint  = (char*)malloc(sizeof(char)*8);
-  strcpy(toPrint, "Event:\n");
+  char * toPrint  = (char*)malloc(sizeof(char)*9);
+  strcpy(toPrint, ">Event:\n");
 
   char * properties = toString(theEvent->properties);
   toPrint = (char*)realloc(toPrint, strlen(toPrint) + strlen(properties)  + 1);
@@ -221,8 +226,8 @@ char* printAlarm(void* toBePrinted)
 {
   Alarm * theAlarm = (Alarm*)toBePrinted;
 
-  char * toPrint  = (char*)malloc(sizeof(char)*8);
-  strcpy(toPrint, "Alarm:\n");
+  char * toPrint  = (char*)malloc(sizeof(char)*10);
+  strcpy(toPrint, ">>Alarm:\n");
 
   char * properties = toString(theAlarm->properties);
   toPrint = (char*)realloc(toPrint, strlen(toPrint) + strlen(properties)  + 1);

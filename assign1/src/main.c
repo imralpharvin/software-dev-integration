@@ -8,7 +8,7 @@ int main()
 
   //createCalendar("testCalEvtProp.ics", &pCalendar);
   //createCalendar("testCalEvtPropAlm.ics", &pCalendar);
-  if (createCalendar("test2.ics", &pCalendar) == OK)
+  if (createCalendar("testCalEvtPropAlm.ics", &pCalendar) == OK)
   {
 
 
