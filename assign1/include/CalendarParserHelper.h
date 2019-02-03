@@ -7,19 +7,23 @@
 #include <stdlib.h>
 #include "LinkedListAPI.h"
 
-bool checkFile (char * filename);
+ICalErrorCode checkFile (char * filename);
 
-bool checkCalendar (List * contentLines);
+ICalErrorCode checkCalendar (List * contentLines);
+
+ICalErrorCode checkEvent(Event * newEvent);
+
+ICalErrorCode checkAlarm(Alarm * newAlarm);
 
 List * icsParser(char * fileName);
 
-DateTime * createDateTime (char * dtLine);
+ICalErrorCode createDateTime (char * dtLine, DateTime ** theDateTime);
 
 Property * createProperty(char * contentLine);
 
-Event * createEvent(List * eventLines);
+ICalErrorCode createEvent(List * eventLines, Event **theEvent);
 
-Alarm * createAlarm(List * alarmLines);
+ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm);
 
 char* printContentLine(void *toBePrinted);
 

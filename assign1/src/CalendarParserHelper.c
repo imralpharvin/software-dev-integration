@@ -4,11 +4,11 @@
 #include "CalendarParser.h"
 #include "CalendarParserHelper.h"
 
-bool checkFile (char * filename)
+ICalErrorCode checkFile (char * filename)
 {
   if(filename == NULL || strlen(filename) == 0)
   {
-    return false;
+    return INV_FILE;
   }
 
   FILE * fp;
@@ -20,7 +20,7 @@ bool checkFile (char * filename)
   else
   {
     printf("FILE DOES NOT EXIST");
-    return false;
+    return INV_FILE;
   }
 
   char * string = malloc(strlen(filename) + 1);
@@ -29,13 +29,12 @@ bool checkFile (char * filename)
   char * token = strtok(string, ".");
 
   token = strtok(NULL, ".");
-  printf("TOKEN: %s\n", token );
 
   if(strcmp(token, "ics") != 0)
   {
     printf("INVALID EXTENSION\n");
     free(string);
-    return false;
+    return INV_FILE;
 
   }
   free(string);
@@ -48,15 +47,15 @@ bool checkFile (char * filename)
 
     printf("INVALID LINE ENDINGS\n");
     fclose(file);
-    return false;
+    return INV_FILE;
   }
 
   fclose(file);
 
-  return true;
+  return OK;
 }
 
-bool checkCalendar(List * contentLines)
+ICalErrorCode checkCalendar(List * contentLines)
 {
   char * firstLine = contentLines->printData(contentLines->head->data);
   char * lastLine = contentLines->printData(contentLines->tail->data);
@@ -66,20 +65,64 @@ bool checkCalendar(List * contentLines)
     printf("WRONG TAGS\n");
     free(firstLine);
     free(lastLine);
-    return false;
+    return INV_CAL;
   }
 
   free(firstLine);
   free(lastLine);
 
-  return true;
+  return OK;
+}
+
+ICalErrorCode checkEvent(Event * newEvent)
+{
+
+  ListIterator iter = createIterator(newEvent->alarms);
+  void* elem;
+  while((elem = nextElement(&iter)) != NULL)
+  {
+    Alarm * currAlarm = (Alarm *) elem;
+    if(checkAlarm(currAlarm) != OK)
+    {
+      return INV_ALARM;
+    }
+
+
+  }
+  if(strlen(newEvent->creationDateTime.date) == 0|| strlen(newEvent->creationDateTime.time) == 0 )
+  {
+    printf("INVALID DATE TIME\n");
+    return INV_DT;
+  }
+
+  if(strlen(newEvent->startDateTime.date) == 0|| strlen(newEvent->startDateTime.time) == 0 )
+  {
+    printf("INVALID DATE TIME\n");
+    return INV_DT;
+  }
+
+  if(strlen(newEvent->UID) == 0)
+  {
+    printf("NO UID\n");
+    return INV_EVENT;
+  }
+  return OK;
+}
+
+ICalErrorCode checkAlarm(Alarm * newAlarm)
+{
+    if(strlen(newAlarm->trigger) == 0 || strlen(newAlarm->action) == 0)
+    {
+      printf("INVALID ALARM\n");
+      return INV_ALARM;
+    }
+    return OK;
 }
 
 List * icsParser(char * fileName)
 {
   FILE * fp;
   fp = fopen(fileName, "r");
-
   //process file line by line
   char line[75];
 
@@ -136,11 +179,12 @@ List * icsParser(char * fileName)
   return contentLines;
 }
 
-DateTime * createDateTime (char * dtLine)
+ICalErrorCode createDateTime (char * dtLine, DateTime ** theDateTime)
 {
   //allocate memory for date time struct
   DateTime * newDateTime = malloc(sizeof(DateTime)) ;
-
+  strcpy(newDateTime->time, "");
+  strcpy(newDateTime->date, "");
   //Split string
   char * string = malloc(strlen(dtLine) + 1);
   strcpy(string, dtLine);
@@ -158,14 +202,20 @@ DateTime * createDateTime (char * dtLine)
     char * copy = malloc(strlen(newDateTime->time) + 1);
     strcpy(copy, newDateTime->time);
     newDateTime->UTC = true;
+    printf("UTC: %d\n", newDateTime->UTC);
 
     strcpy(newDateTime->time, copy);
+    newDateTime->UTC = true;
+    printf("UTC: %d\n", newDateTime->UTC);
     free(copy);
   }
   free(string);
 
-  return newDateTime;
+  *theDateTime = newDateTime;
+
+  return OK;
 }
+
 Property * createProperty(char * contentLine)
 {
   Property * newProperty = malloc(sizeof(Property));
@@ -180,50 +230,112 @@ Property * createProperty(char * contentLine)
   return newProperty;
 }
 
-Event * createEvent(List * eventLines)
+ICalErrorCode createEvent(List * eventLines, Event **theEvent)
 {
+  //Initialize event struct
   Event * newEvent = malloc(sizeof(Event));
   List * eventProperties = initializeList(&printProperty, &deleteProperty, &compareProperties);
   List * alarms = initializeList(&printAlarm, &deleteAlarm, &compareAlarms);
+  strcpy(newEvent->UID, "");
 
+  bool uidParsed = false;
+  bool createParsed = false;
+  bool startParsed = false;
+
+  //Iterate through lines relating to event
   ListIterator iter = createIterator(eventLines);
   void* elem;
   while((elem = nextElement(&iter)) != NULL){
     char * currDescr = eventLines->printData(elem);
     char * toSplit = eventLines->printData(elem);
     char * token = strtok(toSplit, ":");
-
+    //Break if event ends
     if(strcmp(currDescr, "END:VEVENT") == 0 )
     {
       free(toSplit);
       free(currDescr);
       break;
     }
+    //If property name is UID
     else if((strcmp(token, "UID") == 0))
     {
       token = strtok(NULL, "\n");
+
+      if(token == NULL)
+      {
+        free(toSplit);
+        free(currDescr);
+        freeList(eventProperties);
+        freeList(alarms);
+        free(newEvent);
+        return INV_EVENT;
+      }
       strcpy(newEvent->UID, token);
-      //printf("UID: %s\n", newEvent->UID);
+      uidParsed = true;
+
     }
-    else if(strcmp(token, "DTSTAMP") == 0)
+    //If property name is dtStamp
+    else if(strcmp(token, "CREATED") == 0)
     {
       token = strtok(NULL, "\n");
-      DateTime * dtStamp = createDateTime(token);
+
+      if(token == NULL)
+      {
+        free(toSplit);
+        free(currDescr);
+        freeList(eventProperties);
+        freeList(alarms);
+        free(newEvent);
+        return INV_DT;
+      }
+
+      DateTime * dtStamp;
+      ICalErrorCode err = createDateTime(token, &dtStamp);
+      if(err != OK)
+      {
+        free(toSplit);
+        free(currDescr);
+        freeList(eventProperties);
+        freeList(alarms);
+        free(newEvent);
+        return err;
+      }
       newEvent->creationDateTime = *dtStamp;
 
       deleteDate(dtStamp);
+      createParsed = true;
     }
-
+    //If property name is dtstamp
     else if(strcmp(token, "DTSTART") == 0)
     {
       token = strtok(NULL, "\n");
-      DateTime * dtStart = createDateTime(token);
+      if(token == NULL)
+      {
+        free(toSplit);
+        free(currDescr);
+        freeList(eventProperties);
+        freeList(alarms);
+        free(newEvent);
+        return INV_DT;
+      }
+      DateTime * dtStart;
+      ICalErrorCode err = createDateTime(token, &dtStart);
+
+      if(err != OK)
+      {
+        free(toSplit);
+        free(currDescr);
+        freeList(eventProperties);
+        freeList(alarms);
+        free(newEvent);
+        return err;
+      }
       newEvent->startDateTime = *dtStart;
 
       deleteDate(dtStart);
+      startParsed = true;
     }
-
-
+    //If property name begins with alarm
     else if(strcmp(token, "BEGIN") == 0)
     {
       token = strtok(NULL, "\n");
@@ -234,22 +346,17 @@ Event * createEvent(List * eventLines)
           while((elem = nextElement(&iter)) != NULL)
           {
             char * alarmLine = eventLines->printData(elem);
-            //printf("THIS %s\n", alarmLine);
             insertBack(alarmLines, alarmLine);
             if(strcmp(alarmLine, "END:VALARM") ==0 )
             {
               break;
             }
-
           }
-
-
-          Alarm * newAlarm = createAlarm(alarmLines);
+          Alarm * newAlarm;
+          createAlarm(alarmLines, &newAlarm);
           insertBack(alarms, newAlarm);
 
           freeList(alarmLines);
-
-
       }
 
     }
@@ -262,58 +369,36 @@ Event * createEvent(List * eventLines)
     free(toSplit);
   }
 
-
-
-//PART B VALUES
-/*
-
-  ListIterator iterProp = createIterator(eventProperties);
-  void* prop;
-  while((prop = nextElement(&iterProp)) != NULL){
-    char * currDescr = eventProperties->printData(prop);
-    char *token = strtok(currDescr, ":");
-
-    if(strcmp(token, "UID") == 0)
-    {
-      token = strtok(NULL, "\n");
-      strcpy(newEvent->UID, token);
-      //printf("UID: %s\n", newEvent->UID);
-    }
-
-    if(strcmp(token, "DTSTAMP") == 0)
-    {
-      token = strtok(NULL, "\n");
-      DateTime * dtStamp = createDateTime(token);
-      newEvent->creationDateTime = *dtStamp;
-
-      deleteDate(dtStamp);
-
-    }
-
-    if(strcmp(token, "DTSTART") == 0)
-    {
-      token = strtok(NULL, "\n");
-      DateTime * dtStart = createDateTime(token);
-      newEvent->startDateTime = *dtStart;
-
-
-
-      deleteDate(dtStart);
-    }
-
-    free(currDescr);
-  }*/
-
+  if(uidParsed == false || startParsed == false || createParsed == false)
+  {
+    freeList(eventProperties);
+    freeList(alarms);
+    free(newEvent);
+    return INV_EVENT;
+  }
 
   newEvent->properties = eventProperties;
   newEvent->alarms = alarms;
 
-  return newEvent;
+  ICalErrorCode err = checkEvent(newEvent);
+  if(err != OK)
+  {
+    freeList(eventProperties);
+    freeList(alarms);
+    free(newEvent);
+    return err;
+  }
+  *theEvent = newEvent;
+
+  return OK;
 }
 
-Alarm * createAlarm(List * alarmLines)
+ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm)
 {
   Alarm * newAlarm = malloc(sizeof(Alarm));
+  strcpy(newAlarm->action, "");
+  newAlarm->trigger = malloc(sizeof(char));
+  strcpy(newAlarm->trigger, "");
 
   List * alarmProperties = initializeList(&printProperty, &deleteProperty, &compareProperties);
 
@@ -334,61 +419,26 @@ Alarm * createAlarm(List * alarmLines)
     if(strcmp(token, "TRIGGER") == 0)
     {
       token = strtok(NULL, "\n");
-      char * trigger = malloc(sizeof(char)*strlen(token) + 1);
-      strcpy(trigger, token);
-      strcpy(newAlarm->trigger, trigger);
-      //printf("UID: %s\n", newEvent->UID);
+      newAlarm->trigger = realloc(newAlarm->trigger, sizeof(char)*strlen(token) + 1);
+      strcat(newAlarm->trigger, token);
     }
     else if(strcmp(token, "ACTION") == 0)
     {
       token = strtok(NULL, "\n");
-      //DateTime * dtStamp = createDateTime(token);
       strcpy(newAlarm->action,token);
-      //printf("ACTIOOON: %s\n", newAlarm->action );
     }
     else
     {
       Property * alarmProperty = createProperty(propertyLine);
       insertBack(alarmProperties, alarmProperty);
-
-
     }
-
     free(propertyLine);
     free(currDescr);
-
   }
 
   newAlarm->properties = alarmProperties;
-
-/*
-  ListIterator iterProp = createIterator(alarmProperties);
-  void* prop;
-  while((prop = nextElement(&iterProp)) != NULL){
-    char * currDescr = alarmProperties->printData(prop);
-    char *token = strtok(currDescr, ":");
-
-    if(strcmp(token, "TRIGGER") == 0)
-    {
-      token = strtok(NULL, "\n");
-      char * trigger = malloc(sizeof(char)*strlen(token) + 1);
-      strcpy(trigger, token);
-      strcpy(newAlarm->trigger, trigger);
-      //printf("UID: %s\n", newEvent->UID);
-    }
-
-    if(strcmp(token, "ACTION") == 0)
-    {
-      token = strtok(NULL, "\n");
-      //DateTime * dtStamp = createDateTime(token);
-      strcpy(newAlarm->action,token);
-      //printf("ACTIOOON: %s\n", newAlarm->action );
-    }
-    free(currDescr);
-  }*/
-  //printf("Length: %d\n", getLength(alarmProperties));
-  return newAlarm;
-
+  *theAlarm = newAlarm;
+  return OK;
 }
 
 
