@@ -130,7 +130,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
               free(eventLine);
               break;
             }
-            else if(strcmp(eventLine, "END:VCALENDAR") ==0 )
+            else if(strcmp(eventLine, "END:VCALENDAR") ==0 || strcmp(eventLine, "BEGIN:VEVENT") ==0 )
             {
               free(eventLine);
               free(theCalendar);
@@ -290,6 +290,16 @@ char* printError(ICalErrorCode err)
     error = malloc(sizeof(char) * strlen(invDateTime) + 1);
     strcpy(error, invDateTime);
   }
+  else if(err == INV_ALARM)
+  {
+    error = malloc(sizeof(char) * strlen(invAlarm) + 1);
+    strcpy(error, invAlarm);
+  }
+  else if(err == OTHER_ERROR)
+  {
+    error = malloc(sizeof(char) * strlen(otherError) + 1);
+    strcpy(error, otherError);
+  }
   return error;
 }
 
@@ -421,7 +431,6 @@ char* printDate(void* toBePrinted)
   strcat(toString, toPrint->time);
   strcat(toString, "\n");
   strcat(toString, "UTC: ");
-  printf("UTC : %d\n",toPrint->UTC );
   if(toPrint->UTC == true)
   {
     strcat(toString, "YES\n");

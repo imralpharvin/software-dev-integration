@@ -22,5 +22,20 @@ int main()
     free(printErr);
   }
 
+/*
+  DateTime newDT;
+
+  strcpy(newDT.date , "ASDDSD");
+  strcpy(newDT.time, "000000Z");
+
+    printf("UTC: %d\n", newDT.UTC);
+      printf("TIME: %s\n", newDT.time);
+    newDT.UTC = true;
+
+
+    printf("UTC: %d\n", newDT.UTC);
+    printf("TIME: %s\n", newDT.time);
+*/
+
   return 0;
 }

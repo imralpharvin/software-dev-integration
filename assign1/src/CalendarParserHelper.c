@@ -185,6 +185,8 @@ ICalErrorCode createDateTime (char * dtLine, DateTime ** theDateTime)
   DateTime * newDateTime = malloc(sizeof(DateTime)) ;
   strcpy(newDateTime->time, "");
   strcpy(newDateTime->date, "");
+  newDateTime->UTC = true;
+
   //Split string
   char * string = malloc(strlen(dtLine) + 1);
   strcpy(string, dtLine);
@@ -202,11 +204,9 @@ ICalErrorCode createDateTime (char * dtLine, DateTime ** theDateTime)
     char * copy = malloc(strlen(newDateTime->time) + 1);
     strcpy(copy, newDateTime->time);
     newDateTime->UTC = true;
-    printf("UTC: %d\n", newDateTime->UTC);
 
     strcpy(newDateTime->time, copy);
-    newDateTime->UTC = true;
-    printf("UTC: %d\n", newDateTime->UTC);
+    //printf("UTC: %d\n", newDateTime->UTC);
     free(copy);
   }
   free(string);
@@ -259,7 +259,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
     //If property name is UID
     else if((strcmp(token, "UID") == 0))
     {
-      token = strtok(NULL, "\n");
+      token = strtok(NULL, ":");
 
       if(token == NULL)
       {
@@ -277,7 +277,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
     //If property name is dtStamp
     else if(strcmp(token, "CREATED") == 0)
     {
-      token = strtok(NULL, "\n");
+      token = strtok(NULL, ":");
 
       if(token == NULL)
       {
@@ -291,6 +291,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
 
       DateTime * dtStamp;
       ICalErrorCode err = createDateTime(token, &dtStamp);
+
       if(err != OK)
       {
         free(toSplit);
@@ -319,6 +320,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
         return INV_DT;
       }
       DateTime * dtStart;
+
       ICalErrorCode err = createDateTime(token, &dtStart);
 
       if(err != OK)
@@ -351,9 +353,29 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
             {
               break;
             }
+            if(strcmp(alarmLine, "END:VEVENT") ==0 || strcmp(alarmLine, "END:VCALENDAR") ==0  ||  strcmp(alarmLine, "BEGIN:VALARM") ==0 || strcmp(alarmLine, "BEGIN:VEVENT") ==0  )
+            {
+              free(toSplit);
+              free(currDescr);
+              freeList(eventProperties);
+              freeList(alarms);
+              freeList(alarmLines);
+              free(newEvent);
+              return INV_ALARM;
+            }
           }
           Alarm * newAlarm;
-          createAlarm(alarmLines, &newAlarm);
+          ICalErrorCode err = createAlarm(alarmLines, &newAlarm);
+          if(err != OK)
+          {
+            free(toSplit);
+            free(currDescr);
+            freeList(eventProperties);
+            freeList(alarms);
+            freeList(alarmLines);
+            free(newEvent);
+            return err;
+          }
           insertBack(alarms, newAlarm);
 
           freeList(alarmLines);
@@ -400,6 +422,10 @@ ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm)
   newAlarm->trigger = malloc(sizeof(char));
   strcpy(newAlarm->trigger, "");
 
+
+  bool actionParsed = false;
+  bool triggerParsed = false;
+
   List * alarmProperties = initializeList(&printProperty, &deleteProperty, &compareProperties);
 
   ListIterator iter = createIterator(alarmLines);
@@ -419,13 +445,35 @@ ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm)
     if(strcmp(token, "TRIGGER") == 0)
     {
       token = strtok(NULL, "\n");
+      if(token == NULL)
+      {
+        free(currDescr);
+        free(propertyLine);
+        free(newAlarm->trigger);
+        free(newAlarm);
+        freeList(alarmProperties);
+        return INV_ALARM;
+      }
       newAlarm->trigger = realloc(newAlarm->trigger, sizeof(char)*strlen(token) + 1);
       strcat(newAlarm->trigger, token);
+
+      triggerParsed = true;
     }
     else if(strcmp(token, "ACTION") == 0)
     {
       token = strtok(NULL, "\n");
+      if(token == NULL)
+      {
+        free(currDescr);
+        free(propertyLine);
+        free(newAlarm->trigger);
+        free(newAlarm);
+        freeList(alarmProperties);
+        return INV_ALARM;
+      }
       strcpy(newAlarm->action,token);
+
+      actionParsed = true;
     }
     else
     {
@@ -434,8 +482,17 @@ ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm)
     }
     free(propertyLine);
     free(currDescr);
+
   }
 
+
+  if(actionParsed == false || triggerParsed == false)
+  {
+    free(newAlarm->trigger);
+    free(newAlarm);
+    freeList(alarmProperties);
+    return INV_ALARM;
+  }
   newAlarm->properties = alarmProperties;
   *theAlarm = newAlarm;
   return OK;
