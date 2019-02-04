@@ -1,6 +1,6 @@
 CC          =	gcc
 
-CFLAGS      =	 -Wall -std=c11 -g
+CFLAGS      =	 -Wall -g -std=c11 -g
 
 all: list parser helper test
 
@@ -19,9 +19,5 @@ helper: src/CalendarParserHelper.c
 test: bin/liblist.so bin/libcal.so bin/libhelp.so
 	$(CC) $(CFLAGS) bin/liblist.so bin/libcal.so bin/libhelp.so src/main.c -Iinclude -o bin/runMe
 
-main: src/main.c src/CalendarParser.c src/CalendarParserHelper.c src/LinkedListAPI.c
-	$(CC) $(CFLAGS) src/main.c src/CalendarParser.c src/CalendarParserHelper.c src/LinkedListAPI.c -Iinclude -o bin/runMe
-
-
 clean:
-	rm bin/*
+	rm bin/*.o bin/*.so

@@ -19,7 +19,6 @@ ICalErrorCode checkFile (char * filename)
   }
   else
   {
-    printf("FILE DOES NOT EXIST");
     return INV_FILE;
   }
 
@@ -32,7 +31,6 @@ ICalErrorCode checkFile (char * filename)
 
   if(strcmp(token, "ics") != 0)
   {
-    printf("INVALID EXTENSION\n");
     free(string);
     return INV_FILE;
 
@@ -45,7 +43,6 @@ ICalErrorCode checkFile (char * filename)
   if( line[strlen(line)-2] != '\r' || line[strlen(line)-1] != '\n')
   {
 
-    printf("INVALID LINE ENDINGS\n");
     fclose(file);
     return INV_FILE;
   }
@@ -62,7 +59,6 @@ ICalErrorCode checkCalendar(List * contentLines)
 
   if(strcmp(firstLine, "BEGIN:VCALENDAR") != 0 || strcmp(lastLine, "END:VCALENDAR") != 0)
   {
-    printf("WRONG TAGS\n");
     free(firstLine);
     free(lastLine);
     return INV_CAL;
@@ -86,24 +82,19 @@ ICalErrorCode checkEvent(Event * newEvent)
     {
       return INV_ALARM;
     }
-
-
   }
   if(strlen(newEvent->creationDateTime.date) == 0|| strlen(newEvent->creationDateTime.time) == 0 )
   {
-    printf("INVALID DATE TIME\n");
     return INV_DT;
   }
 
   if(strlen(newEvent->startDateTime.date) == 0|| strlen(newEvent->startDateTime.time) == 0 )
   {
-    printf("INVALID DATE TIME\n");
     return INV_DT;
   }
 
   if(strlen(newEvent->UID) == 0)
   {
-    printf("NO UID\n");
     return INV_EVENT;
   }
   return OK;
@@ -113,7 +104,6 @@ ICalErrorCode checkAlarm(Alarm * newAlarm)
 {
     if(strlen(newAlarm->trigger) == 0 || strlen(newAlarm->action) == 0)
     {
-      printf("INVALID ALARM\n");
       return INV_ALARM;
     }
     return OK;
@@ -141,7 +131,7 @@ List * icsParser(char * fileName)
     {
       line[strlen(line)-1] = '\0';
     }
-    //printf("%s = %lu\n", line, strlen(line));
+
     contentLine = malloc(strlen(line) + 1);
     strcpy(contentLine, line);
 
@@ -151,7 +141,7 @@ List * icsParser(char * fileName)
       char *ps = line;
       ps++;
 
-      //printf("%s\n", ps);
+
       previousLine = realloc(previousLine, strlen(ps) + strlen(previousLine) + 2);
       strcat(previousLine, ps);
       free(contentLine);
@@ -172,8 +162,6 @@ List * icsParser(char * fileName)
     }
   }
   insertBack(contentLines, previousLine);
-
-  //printf("CONTENT LINES\n\n%s\n*********\n", toString(contentLines));
 
   fclose(fp);
   return contentLines;
@@ -206,7 +194,7 @@ ICalErrorCode createDateTime (char * dtLine, DateTime ** theDateTime)
     newDateTime->UTC = true;
 
     strcpy(newDateTime->time, copy);
-    //printf("UTC: %d\n", newDateTime->UTC);
+
     free(copy);
   }
   free(string);
@@ -220,7 +208,31 @@ Property * createProperty(char * contentLine)
 {
   Property * newProperty = malloc(sizeof(Property));
 
-  char *token = strtok(contentLine, ":");
+  char * colon = malloc(strlen(contentLine)+ 1);
+  char * semicolon  = malloc(strlen(contentLine)+ 1);
+  //char * token = strtok(toSplit, ":");
+  //Break if event ends
+  strcpy(colon, contentLine);
+  strcpy(semicolon, contentLine);
+
+  char * colonToken = strtok(colon, ":");
+  char * semicolonToken = strtok(semicolon, ";");
+  char *token;
+
+  if(strlen(colonToken) < strlen(semicolonToken))
+  {
+      token = strtok(contentLine, ":");
+  }
+  else if (strlen(colonToken) > strlen(semicolonToken))
+  {
+      token = strtok(contentLine, ";");
+  }
+
+  free(colon);
+  free(semicolon);
+
+
+  //char *token = strtok(contentLine, ":");
 
   strcpy(newProperty->propName, token);
   token = strtok(NULL, "\n");
@@ -248,8 +260,28 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
   while((elem = nextElement(&iter)) != NULL){
     char * currDescr = eventLines->printData(elem);
     char * toSplit = eventLines->printData(elem);
-    char * token = strtok(toSplit, ":");
+    char * colon = eventLines->printData(elem);
+    char * semicolon = eventLines->printData(elem);
+    //char * token = strtok(toSplit, ":");
     //Break if event ends
+
+    char * colonToken = strtok(colon, ":");
+    char * semicolonToken = strtok(semicolon, ";");
+    char *token;
+
+    if(strlen(colonToken) < strlen(semicolonToken))
+    {
+        token = strtok(toSplit, ":");
+    }
+    else if (strlen(colonToken) > strlen(semicolonToken))
+    {
+        token = strtok(toSplit, ";");
+    }
+
+    free(colon);
+    free(semicolon);
+
+
     if(strcmp(currDescr, "END:VEVENT") == 0 )
     {
       free(toSplit);
@@ -259,7 +291,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
     //If property name is UID
     else if((strcmp(token, "UID") == 0))
     {
-      token = strtok(NULL, ":");
+      token = strtok(NULL, "\n");
 
       if(token == NULL)
       {
@@ -277,7 +309,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
     //If property name is dtStamp
     else if(strcmp(token, "CREATED") == 0)
     {
-      token = strtok(NULL, ":");
+      token = strtok(NULL, "\n");
 
       if(token == NULL)
       {
@@ -393,6 +425,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
 
   if(uidParsed == false || startParsed == false || createParsed == false)
   {
+
     freeList(eventProperties);
     freeList(alarms);
     free(newEvent);
@@ -405,6 +438,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
   ICalErrorCode err = checkEvent(newEvent);
   if(err != OK)
   {
+    printf("CHECK EVENT\n");
     freeList(eventProperties);
     freeList(alarms);
     free(newEvent);
@@ -441,7 +475,30 @@ ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm)
       break;
     }
 
-    char *token = strtok(currDescr, ":");
+    char * colon = alarmLines->printData(elem);
+    char * semicolon = alarmLines->printData(elem);
+    //char * token = strtok(toSplit, ":");
+    //Break if event ends
+
+    char * colonToken = strtok(colon, ":");
+    char * semicolonToken = strtok(semicolon, ";");
+    char *token;
+
+    if(strlen(colonToken) < strlen(semicolonToken))
+    {
+        token = strtok(currDescr, ":");
+    }
+    else if (strlen(colonToken) > strlen(semicolonToken))
+    {
+        token = strtok(currDescr, ";");
+    }
+
+    free(colon);
+    free(semicolon);
+
+  //  char *token = strtok(currDescr, ":");
+
+
     if(strcmp(token, "TRIGGER") == 0)
     {
       token = strtok(NULL, "\n");

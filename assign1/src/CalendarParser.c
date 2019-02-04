@@ -32,7 +32,6 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
   }
   else
   {
-    printf("INVALID BEGINNING TAG\n");
     freeList(contentLines);
     free(firstLine);
     return INV_CAL;
@@ -41,7 +40,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
   Calendar *theCalendar = malloc(sizeof(Calendar));
   theCalendar->version = 0;
   strcpy(theCalendar->prodID, "");
-  //printf("PRODID NO: %lu\n", strlen(theCalendar->prodID));
+
   //initialize properties list
   List * properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
   List * events = initializeList(&printEvent, &deleteEvent, &compareEvents);
@@ -51,18 +50,37 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 
 	while((elem = nextElement(&iter)) != NULL){
     char * currDescr = contentLines->printData(elem);
+    char * colon = contentLines->printData(elem);
+    char * semicolon = contentLines->printData(elem);
     if(strcmp(currDescr, "END:VCALENDAR") == 0 )
     {
+      free(colon);
+      free(semicolon);
       free(currDescr);
       break;
     }
     //Delimit by : and copy string to the prop
-    char *token = strtok(currDescr, ":");
 
+    char * colonToken = strtok(colon, ":");
+    char * semicolonToken = strtok(semicolon, ";");
+    char *token;
+
+    if(strlen(colonToken) < strlen(semicolonToken))
+    {
+        token = strtok(currDescr, ":");
+    }
+    else if (strlen(colonToken) > strlen(semicolonToken))
+    {
+        token = strtok(currDescr, ";");
+    }
+
+    printf("TOKEN: %s\n", token);
+    free(colon);
+    free(semicolon);
 
     if(strcmp(token, "VERSION") == 0)
     {
-      token = strtok(NULL, ":");
+      token = strtok(NULL, "\n");
       //printf("TOKEN: %s", token);
       if(versionParsed == true )
       {
@@ -91,7 +109,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 
     else if(strcmp(token, "PRODID") == 0)
     {
-      token = strtok(NULL, ":");
+      token = strtok(NULL, "\n");
       if(prodIdParsed == true )
       {
         free(theCalendar);
@@ -117,7 +135,8 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 
     else if(strcmp(token, "BEGIN") == 0)
     {
-      token = strtok(NULL, ":");
+      token = strtok(NULL, "\n");
+      printf("TOKEN: %s\n", token);
       if(strcmp(token, "VEVENT") == 0)
       {
           List * eventLines = initializeList(&printContentLine, &deleteContentLine, compareContentLine);
@@ -125,8 +144,10 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
           while((elem = nextElement(&iter)) != NULL)
           {
             char * eventLine = contentLines->printData(elem);
+            printf("eventLine: %s\n", eventLine);
             if(strcmp(eventLine, "END:VEVENT") ==0 )
             {
+              printf("HERE AT END EVENT\n");
               free(eventLine);
               break;
             }
@@ -155,6 +176,7 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
             freeList(events);
             freeList(contentLines);
             freeList(eventLines);
+            printf("HERE AT ERROR\n");
             return err;
           }
 
@@ -404,7 +426,7 @@ char* printProperty(void* toBePrinted)
   char * propDescr = ((Property*)toBePrinted)->propDescr;
   char * toString = malloc(sizeof(char) *(strlen(propName) + strlen(propDescr) + 3));
   strcpy(toString, propName);
-  strcat(toString, ":");
+  strcat(toString, ": ");
   strcat(toString, propDescr);
   return toString;
 
