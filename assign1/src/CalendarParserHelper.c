@@ -307,7 +307,7 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
 
     }
     //If property name is dtStamp
-    else if(strcmp(token, "CREATED") == 0)
+    else if(strcmp(token, "DTSTAMP") == 0)
     {
       token = strtok(NULL, "\n");
 

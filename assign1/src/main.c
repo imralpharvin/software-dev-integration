@@ -3,7 +3,7 @@
 
 int main()
 {
-
+/*
   Calendar * pCalendar;
 
   ICalErrorCode error = createCalendar("testCalEvtPropAlm.ics", &pCalendar);
@@ -20,9 +20,9 @@ int main()
     char * printErr = printError(error);
     printf("%s", printErr);
     free(printErr);
-  }
+  }*/
 
-/*
+
   DateTime newDT;
 
   strcpy(newDT.date , "ASDDSD");
@@ -35,7 +35,7 @@ int main()
 
     printf("UTC: %d\n", newDT.UTC);
     printf("TIME: %s\n", newDT.time);
-*/
+
 
   return 0;
 }
