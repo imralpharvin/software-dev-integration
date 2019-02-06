@@ -3,10 +3,10 @@
 
 int main()
 {
-/*
+
   Calendar * pCalendar;
 
-  ICalErrorCode error = createCalendar("testCalEvtPropAlm.ics", &pCalendar);
+  ICalErrorCode error = createCalendar("testCalSimpleUTCComments.ics", &pCalendar);
   if (error == OK)
   {
     char * calendarInfo = printCalendar(pCalendar);
@@ -20,22 +20,6 @@ int main()
     char * printErr = printError(error);
     printf("%s", printErr);
     free(printErr);
-  }*/
-
-
-  DateTime newDT;
-
-  strcpy(newDT.date , "ASDDSD");
-  strcpy(newDT.time, "000000Z");
-
-    printf("UTC: %d\n", newDT.UTC);
-      printf("TIME: %s\n", newDT.time);
-    newDT.UTC = true;
-
-
-    printf("UTC: %d\n", newDT.UTC);
-    printf("TIME: %s\n", newDT.time);
-
-
+  }
   return 0;
 }

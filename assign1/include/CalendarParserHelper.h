@@ -1,3 +1,8 @@
+/* Name: Ralph Arvin De Castro
+  Student ID: 0923223
+
+*/
+
 #ifndef CALENDARPARSERHELPER_H
 #define CALENDARPARSERHELPER_H
 
@@ -7,13 +12,9 @@
 #include <stdlib.h>
 #include "LinkedListAPI.h"
 
-ICalErrorCode checkFile (char * filename);
+ICalErrorCode validateFile (char * filename);
 
-ICalErrorCode checkCalendar (List * contentLines);
-
-ICalErrorCode checkEvent(Event * newEvent);
-
-ICalErrorCode checkAlarm(Alarm * newAlarm);
+char * determineDelimiter(char * contentLine);
 
 List * icsParser(char * fileName);
 

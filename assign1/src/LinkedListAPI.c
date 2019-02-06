@@ -1,3 +1,10 @@
+/* Name: Ralph Arvin De Castro
+  Student ID: 0923223
+
+  *****MOST FUNCTIONS ARE FROM LinkedListAPI.c provided by the course****
+  **I do not declare any credit from these functions**
+*/
+
 #include <stdio.h>
 #include "LinkedListAPI.h"
 
