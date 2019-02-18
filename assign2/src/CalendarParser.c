@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "CalendarParser.h"
+#include "CalendarParser_A2temp2.h"
 #include "CalendarParserHelper.h"
 
 ICalErrorCode createCalendar(char* fileName, Calendar** obj)
@@ -38,15 +38,6 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
       return INV_CAL;
   }
   free(firstLine);
-  char * lastLine = contentLines->printData(contentLines->tail->data);
-  if (strcmp(lastLine, "END:VCALENDAR") != 0) {
-      free(lastLine);
-      deleteCalendar(theCalendar);
-      freeList(contentLines);
-      return INV_CAL;
-  }
-  free(lastLine);
-
 
 	while((elem = nextElement(&iter)) != NULL){
     char * currDescr = contentLines->printData(elem);
@@ -135,12 +126,15 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
     }
     free(currDescr);
   }
-  if(versionParsed == false|| prodIdParsed == false || getLength(theCalendar->events) == 0) {
+  char * lastLine = contentLines->printData(contentLines->tail->data);
+  if(versionParsed == false|| prodIdParsed == false || strcmp(lastLine, "END:VCALENDAR") != 0 || getLength(theCalendar->events) == 0) {
+    free(lastLine);
     deleteCalendar(theCalendar);
     freeList(contentLines);
     return INV_CAL;
   }
   freeList(contentLines);
+  free(lastLine);
 
   return OK;
 }
@@ -193,7 +187,7 @@ char* printCalendar(const Calendar* obj)
 
 char* printError(ICalErrorCode err)
 {
-  char * ok = "OK\n";
+  char * ok = "Success: OK\n";
   char * invFile = "Error: INV_FILE (Invalid File)\n";
   char * invCal = "Error: INV_CAL (Invalid Calendar)\n";
   char * invEvent = "Error: INV_EVENT (Invalid Event)\n";
@@ -206,8 +200,7 @@ char* printError(ICalErrorCode err)
   char * otherError = "Error: OTHER_ERROR (Other Error)\n";
 
   char * error;
-
-  if(err == OK){
+  if(err == OK) {
     error = malloc(sizeof(char) * strlen(ok) + 1);
     strcpy(error, ok);
   } else if(err == INV_FILE) {
@@ -246,11 +239,172 @@ char* printError(ICalErrorCode err)
 
 ICalErrorCode writeCalendar(char* fileName, const Calendar* obj)
 {
+  if(obj == NULL){
+    return OTHER_ERROR;
+  }
+
+  if(fileName == NULL || strlen(fileName) == 0) { //If filename is NULL or empty string
+    return INV_FILE;
+  }
+
+  char * string = malloc(strlen(fileName) + 1); //If file doesnt have the ics extension
+  strcpy(string, fileName);
+  char * token = strtok(string, ".");
+  token = strtok(NULL, ".");
+  if(strcmp(token, "ics") != 0){
+    free(string);
+    return INV_FILE;
+  }
+  free(string);
+
+  FILE *fp;
+  fp = fopen(fileName, "w");
+
+  fprintf(fp, "BEGIN:VCALENDAR\r\n");
+  fprintf(fp,"VERSION:%.1f\r\n", obj->version);
+  fprintf(fp,"PRODID:%s\r\n", obj->prodID);
+  if(getLength(obj->properties) > 0){
+    ListIterator iter3 = createIterator(obj->properties);
+    void* elem3;
+    while((elem3 = nextElement(&iter3)) != NULL){
+      Property * theProperty = (Property*) elem3;
+      fprintf(fp, "%s:%s\r\n", theProperty->propName, theProperty->propDescr);
+    }
+
+  }
+
+  ListIterator iter = createIterator(obj->events);   //Iterates through content lines
+	void* elem;
+  while((elem = nextElement(&iter)) != NULL){
+    Event* theEvent = (Event *) elem;
+    fprintf(fp,"BEGIN:VEVENT\r\n");
+    fprintf(fp,"UID:%s\r\n", theEvent->UID);
+    DateTime creationDT = theEvent->creationDateTime;
+    fprintf(fp,"DTSTAMP:%sT%s", creationDT.date, creationDT.time );
+    if(creationDT.UTC == true) {
+      fprintf(fp,"Z");
+    }
+    fprintf(fp,"\r\n");
+    DateTime startDT = theEvent->startDateTime;
+    fprintf(fp,"DTSTART:%sT%s", startDT.date, startDT.time );
+    if(startDT.UTC == true) {
+      fprintf(fp,"Z");
+    }
+    fprintf(fp,"\r\n");
+    if(getLength(theEvent->properties) > 0){
+      ListIterator iter5 = createIterator(theEvent->properties);
+      void* elem5;
+      while((elem5 = nextElement(&iter5)) != NULL){
+        Property * theProperty = (Property*) elem5;
+        fprintf(fp, "%s:%s\r\n", theProperty->propName, theProperty->propDescr);
+      }
+
+    }
+
+    ListIterator iter2 = createIterator(theEvent->alarms);
+    void* elem2;
+    while((elem2 = nextElement(&iter2)) != NULL){
+      Alarm * theAlarm = (Alarm*) elem2;
+      fprintf(fp,"BEGIN:VALARM\r\n");
+      fprintf(fp, "ACTION:%s\r\n", theAlarm->action );
+      fprintf(fp, "TRIGGER:%s\r\n", theAlarm->trigger );
+      if(getLength(theAlarm->properties) > 0){
+        ListIterator iter4 = createIterator(theAlarm->properties);
+        void* elem4;
+        while((elem4 = nextElement(&iter4)) != NULL){
+          Property * theProperty = (Property*) elem4;
+          fprintf(fp, "%s:%s\r\n", theProperty->propName, theProperty->propDescr);
+        }
+
+      }
+      fprintf(fp,"END:VALARM\r\n");
+    }
+
+    fprintf(fp,"END:VEVENT\r\n");
+  }
+
+
+
+  fprintf(fp, "END:VCALENDAR\r\n");
+
+
+  fclose(fp);
+
+
+
+
   return OK;
 }
 
 ICalErrorCode validateCalendar(const Calendar* obj)
 {
+  if(obj == NULL ||strlen(obj->prodID) > 1000 || strlen(obj->prodID) < 1 || obj->events == NULL || obj->properties == NULL || getLength(obj->events) < 1 )
+  {
+    return INV_CAL;
+  }
+
+
+  if(getLength(obj->properties) > 0){
+    ListIterator iter1 = createIterator(obj->properties);
+    void* elem1;
+    while((elem1 = nextElement(&iter1)) != NULL){
+      Property * theProperty = (Property*) elem1;
+      if(strlen(theProperty->propName) > 200 || strlen(theProperty->propName) < 1 || strlen(theProperty->propDescr) < 1){
+        return INV_CAL;
+      }
+    }
+  }
+
+  ListIterator iter = createIterator(obj->events);
+  void* elem;
+  while((elem = nextElement(&iter)) != NULL){
+    Event * theEvent = (Event*) elem;
+
+    if(strlen(theEvent->UID) > 1000 || strlen(theEvent->UID) < 1 || theEvent->properties == NULL || theEvent->alarms == NULL){
+      return INV_EVENT;
+    }
+
+    DateTime creationDT = theEvent->creationDateTime;
+    if(strlen(creationDT.date) > 9 || strlen(creationDT.date) < 1 || strlen(creationDT.time) < 1 || strlen(creationDT.time) > 7) {
+      return INV_DT;
+    }
+    DateTime startDT = theEvent->startDateTime;
+    if(strlen(startDT.date) > 9 || strlen(startDT.date) < 1 || strlen(startDT.time) < 1 || strlen(startDT.time) > 7) {
+      return INV_DT;
+    }
+
+    if(getLength(theEvent->properties) > 0){
+      ListIterator iter5 = createIterator(theEvent->properties);
+      void* elem5;
+      while((elem5 = nextElement(&iter5)) != NULL){
+        Property * theProperty = (Property*) elem5;
+        if(strlen(theProperty->propName) > 200 || strlen(theProperty->propName) < 1 || strlen(theProperty->propDescr) < 1){
+          return INV_EVENT;
+        }
+      }
+    }
+
+    ListIterator iter2 = createIterator(theEvent->alarms);
+    void* elem2;
+    while((elem2 = nextElement(&iter2)) != NULL){
+      Alarm * theAlarm = (Alarm*) elem2;
+
+      if(strlen(theAlarm->action) > 200 || strlen(theAlarm->action) < 0 || theAlarm->properties == NULL || theAlarm->trigger == NULL ||strlen(theAlarm->trigger) < 1)
+      {
+        return INV_ALARM;
+      }
+      if(getLength(theAlarm->properties) > 0){
+        ListIterator iter4 = createIterator(theAlarm->properties);
+        void* elem4;
+        while((elem4 = nextElement(&iter4)) != NULL){
+          Property * theProperty = (Property*) elem4;
+          if(strlen(theProperty->propName) > 200 || strlen(theProperty->propName) < 1 || strlen(theProperty->propDescr) < 1){
+            return INV_ALARM;
+          }
+        }
+      }
+    }
+  }
   return OK;
 }
 
@@ -451,26 +605,22 @@ List * icsParser(char * fileName)
   while (fgets(line, sizeof(line), fp)){
     if(line[strlen(line)-2] == '\r'){
       line[strlen(line)-2] = '\0';
-
     }else{
-      line[strlen(line)] = '\0';
+      line[strlen(line)-1] = '\0';
     }
 
     contentLine = malloc(strlen(line) + 1);
-
     strcpy(contentLine, line);
 
+    //If theres a space or tab
     if(line[0] == ' ' || line[0] == '\t'){
       char *ps = line;
       ps++;
+
       previousLine = realloc(previousLine, strlen(ps) + strlen(previousLine) + 2);
       strcat(previousLine, ps);
       free(contentLine);
-    }else if(line[0] == '.'){
-      previousLine = realloc(previousLine, strlen(line) + strlen(previousLine) + 2);
-      strcat(previousLine, line);
-      free(contentLine);
-    } else if(line[0] == ';' || strcmp(line, "") == 0 ){
+    } else if(line[0] == ';'){
       free(contentLine);
     } else {//No space or tab
       //if everything is folded already
@@ -521,7 +671,6 @@ ICalErrorCode createDateTime (char * dtLine, DateTime ** theDateTime)
 
 Property * createProperty(char * contentLine)
 {
-
   Property * newProperty = malloc(sizeof(Property));
   char *token = strtok(contentLine, determineDelimiter(contentLine));
   strcpy(newProperty->propName, token);
@@ -628,13 +777,6 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
           freeList(alarmLines);
       }
     } else{
-      token = strtok(NULL, "\n");
-      if(token == NULL)
-      {
-        free(currDescr);
-        deleteEvent(newEvent);
-        return INV_EVENT;
-      }
       char * propertyLine = eventLines->printData(elem);
       Property * eventProperty = createProperty(propertyLine);
       insertBack(eventProperties, eventProperty);
@@ -694,13 +836,6 @@ ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm)
       strcpy(newAlarm->action,token);
       actionParsed = true;
     } else{
-      token = strtok(NULL, "\n");
-      if(token == NULL)
-      {
-        free(currDescr);
-        deleteEvent(newAlarm);
-        return INV_ALARM;
-      }
       char * propertyLine = alarmLines->printData(elem);
       Property * alarmProperty = createProperty(propertyLine);
       insertBack(alarmProperties, alarmProperty);

@@ -6,7 +6,8 @@ int main()
 
   Calendar * pCalendar;
 
-  ICalErrorCode error = createCalendar("testCalSimpleUTCComments.ics", &pCalendar);
+  /*ICalErrorCode error = createCalendar("invEvtProp2.ics", &pCalendar);*/
+  ICalErrorCode error = createCalendar("megaCal1.ics", &pCalendar);
   if (error == OK)
   {
     char * calendarInfo = printCalendar(pCalendar);
