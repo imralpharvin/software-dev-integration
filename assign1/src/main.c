@@ -4,23 +4,30 @@
 int main()
 {
 
-  Calendar * pCalendar;
+  FILE * fp = fopen("files.txt", "r");
 
-  /*ICalErrorCode error = createCalendar("invEvtProp2.ics", &pCalendar);*/
-  ICalErrorCode error = createCalendar("megaCal1.ics", &pCalendar);
-  if (error == OK)
-  {
-    char * calendarInfo = printCalendar(pCalendar);
-    printf("%s" ,calendarInfo);
-    free(calendarInfo);
+    char line[200];
+    while (fgets(line, sizeof(line), fp)){
 
-    deleteCalendar(pCalendar);
-  }
-  else
-  {
-    char * printErr = printError(error);
-    printf("%s", printErr);
-    free(printErr);
-  }
+      line[strlen(line)-1] = '\0';
+      printf("FILE: %s | ", line);
+      Calendar * pCalendar;
+
+      ICalErrorCode error = createCalendar(line, &pCalendar);
+
+      if(error == OK )
+      {
+        deleteCalendar(pCalendar);
+      }
+
+        char * printErr = printError(error);
+        printf("%s", printErr);
+        free(printErr);
+
+
+    }
+
+  fclose(fp);
+
   return 0;
 }

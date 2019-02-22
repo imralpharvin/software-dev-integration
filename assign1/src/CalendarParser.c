@@ -698,7 +698,7 @@ ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm)
       if(token == NULL)
       {
         free(currDescr);
-        deleteEvent(newAlarm);
+        deleteAlarm(newAlarm);
         return INV_ALARM;
       }
       char * propertyLine = alarmLines->printData(elem);

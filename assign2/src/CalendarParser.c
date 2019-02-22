@@ -9,6 +9,7 @@
 #include "CalendarParser_A2temp2.h"
 #include "CalendarParserHelper.h"
 
+
 ICalErrorCode createCalendar(char* fileName, Calendar** obj)
 {
   if(validateFile(fileName) != OK){ //Check file
@@ -38,6 +39,15 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
       return INV_CAL;
   }
   free(firstLine);
+  char * lastLine = contentLines->printData(contentLines->tail->data);
+  if (strcmp(lastLine, "END:VCALENDAR") != 0) {
+      free(lastLine);
+      deleteCalendar(theCalendar);
+      freeList(contentLines);
+      return INV_CAL;
+  }
+  free(lastLine);
+
 
 	while((elem = nextElement(&iter)) != NULL){
     char * currDescr = contentLines->printData(elem);
@@ -126,15 +136,12 @@ ICalErrorCode createCalendar(char* fileName, Calendar** obj)
     }
     free(currDescr);
   }
-  char * lastLine = contentLines->printData(contentLines->tail->data);
-  if(versionParsed == false|| prodIdParsed == false || strcmp(lastLine, "END:VCALENDAR") != 0 || getLength(theCalendar->events) == 0) {
-    free(lastLine);
+  if(versionParsed == false|| prodIdParsed == false || getLength(theCalendar->events) == 0) {
     deleteCalendar(theCalendar);
     freeList(contentLines);
     return INV_CAL;
   }
   freeList(contentLines);
-  free(lastLine);
 
   return OK;
 }
@@ -187,7 +194,7 @@ char* printCalendar(const Calendar* obj)
 
 char* printError(ICalErrorCode err)
 {
-  char * ok = "Success: OK\n";
+  char * ok = "OK\n";
   char * invFile = "Error: INV_FILE (Invalid File)\n";
   char * invCal = "Error: INV_CAL (Invalid Calendar)\n";
   char * invEvent = "Error: INV_EVENT (Invalid Event)\n";
@@ -200,7 +207,8 @@ char* printError(ICalErrorCode err)
   char * otherError = "Error: OTHER_ERROR (Other Error)\n";
 
   char * error;
-  if(err == OK) {
+
+  if(err == OK){
     error = malloc(sizeof(char) * strlen(ok) + 1);
     strcpy(error, ok);
   } else if(err == INV_FILE) {
@@ -338,50 +346,245 @@ ICalErrorCode writeCalendar(char* fileName, const Calendar* obj)
 
 ICalErrorCode validateCalendar(const Calendar* obj)
 {
-  if(obj == NULL ||strlen(obj->prodID) > 1000 || strlen(obj->prodID) < 1 || obj->events == NULL || obj->properties == NULL || getLength(obj->events) < 1 )
-  {
+  if(obj == NULL ||obj->version <= 0 || strlen(obj->prodID) > 999 || strlen(obj->prodID) < 1 || obj->events == NULL || obj->properties == NULL || getLength(obj->events) < 1 ) {
     return INV_CAL;
   }
 
 
-  if(getLength(obj->properties) > 0){
-    ListIterator iter1 = createIterator(obj->properties);
-    void* elem1;
-    while((elem1 = nextElement(&iter1)) != NULL){
-      Property * theProperty = (Property*) elem1;
-      if(strlen(theProperty->propName) > 200 || strlen(theProperty->propName) < 1 || strlen(theProperty->propDescr) < 1){
-        return INV_CAL;
-      }
+  //Validate calendar property List
+  ListIterator iter1 = createIterator(obj->properties);
+  void* elem1;
+  int calscaleCount = 0;
+  int methodCount = 0;
+  bool validProperty = false;
+
+  while((elem1 = nextElement(&iter1)) != NULL){
+    Property * theProperty = (Property*) elem1;
+    if(strlen(theProperty->propName) > 200 || strlen(theProperty->propName) < 1 || strlen(theProperty->propDescr) < 1){
+      return INV_CAL;
+    }
+
+    if(strcmp(theProperty->propName, "CALSCALE") == 0)
+    {
+      calscaleCount ++;
+      validProperty = true;
+    }
+
+    if(strcmp(theProperty->propName, "METHOD") == 0)
+    {
+      methodCount ++;
+      validProperty = true;
+    }
+
+    if(strcmp(theProperty->propName, "X-PROP") == 0 || strcmp(theProperty->propName, "IANA-PROP") == 0)
+    {
+      validProperty = true;
+    }
+
+    if(validProperty == false)
+    {
+      return INV_CAL;
     }
   }
+
+  //Validate calscale and method
+  if(calscaleCount > 1 || methodCount > 1)
+  {
+    return INV_CAL;
+  }
+
 
   ListIterator iter = createIterator(obj->events);
   void* elem;
   while((elem = nextElement(&iter)) != NULL){
     Event * theEvent = (Event*) elem;
 
-    if(strlen(theEvent->UID) > 1000 || strlen(theEvent->UID) < 1 || theEvent->properties == NULL || theEvent->alarms == NULL){
+    if(strlen(theEvent->UID) > 999 || strlen(theEvent->UID) < 1 || theEvent->properties == NULL || theEvent->alarms == NULL){
       return INV_EVENT;
     }
 
     DateTime creationDT = theEvent->creationDateTime;
-    if(strlen(creationDT.date) > 9 || strlen(creationDT.date) < 1 || strlen(creationDT.time) < 1 || strlen(creationDT.time) > 7) {
+    if(strlen(creationDT.date) > 8 || strlen(creationDT.date) < 1 || strlen(creationDT.time) < 1 || strlen(creationDT.time) > 6) {
       return INV_DT;
     }
     DateTime startDT = theEvent->startDateTime;
-    if(strlen(startDT.date) > 9 || strlen(startDT.date) < 1 || strlen(startDT.time) < 1 || strlen(startDT.time) > 7) {
+    if(strlen(startDT.date) > 8 || strlen(startDT.date) < 1 || strlen(startDT.time) < 1 || strlen(startDT.time) > 6) {
       return INV_DT;
     }
 
     if(getLength(theEvent->properties) > 0){
       ListIterator iter5 = createIterator(theEvent->properties);
       void* elem5;
+      bool dtendExist = false;
+      bool durationExist = false;
+
+      /*class / created / description / geo /
+                       last-mod / location / organizer / priority /
+                       seq / status / summary / transp /
+                       url / recurid /*/
+
+      int classCount = 0;
+      int createdCount = 0;
+      int descriptionCount = 0;
+      int geoCount = 0;
+      int lastmodCount = 0;
+      int locationCount = 0;
+      int organizerCount = 0;
+      int priorityCount = 0;
+      int seqCount = 0;
+      int statusCount = 0;
+      int summaryCount = 0;
+      int transpCount = 0;
+      int urlCount = 0;
+      int recuridCount = 0;
+
       while((elem5 = nextElement(&iter5)) != NULL){
         Property * theProperty = (Property*) elem5;
+        bool validProperty = false;
         if(strlen(theProperty->propName) > 200 || strlen(theProperty->propName) < 1 || strlen(theProperty->propDescr) < 1){
           return INV_EVENT;
         }
+
+        if(strcmp(theProperty->propName, "RRULE") == 0)
+        {
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "DTEND") == 0)
+        {
+          dtendExist = true;
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "DURATION") == 0)
+        {
+          durationExist = true;
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "CLASS") == 0)
+        {
+          classCount++;
+          validProperty = true;
+        }
+
+        if( strcmp(theProperty->propName, "CREATED") == 0 )
+        {
+          createdCount++;
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "DESCRIPTION") == 0 )
+        {
+          descriptionCount++;
+          validProperty = true;
+        }
+
+        if( strcmp(theProperty->propName, "GEO") == 0)
+        {
+          geoCount++;
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "LAST-MODIFIED") == 0)
+        {
+          lastmodCount++;
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "LOCATION") == 0)
+        {
+          locationCount++;
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "ORGANIZER") == 0)
+        {
+          organizerCount++;
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "PRIORITY") == 0)
+        {
+          priorityCount++;
+          validProperty = true;
+        }
+
+        if(strcmp(theProperty->propName, "SEQ") == 0)
+        {
+          seqCount++;
+          validProperty = true;
+        }
+
+        if( strcmp(theProperty->propName, "STATUS") == 0 )
+        {
+          statusCount++;
+          validProperty = true;
+        }
+
+        if( strcmp(theProperty->propName, "SUMMARY") == 0 )
+        {
+          summaryCount++;
+          validProperty = true;
+        }
+
+        if( strcmp(theProperty->propName, "TRANSP") == 0 )
+        {
+          transpCount++;
+          validProperty = true;
+        }
+        if(strcmp(theProperty->propName, "URL") == 0 )
+        {
+          urlCount++;
+          validProperty = true;
+        }
+
+        if( strcmp(theProperty->propName, "RECURID") == 0 )
+        {
+          recuridCount++;
+          validProperty = true;
+        }
+
+        /*attach / attendee / categories / comment /
+                          contact / exdate / rstatus / related /
+                          resources / rdate / x-prop / iana-prop*/
+
+        if(strcmp(theProperty->propName, "ATTACH") == 0 || strcmp(theProperty->propName, "ATTENDEE") == 0 || strcmp(theProperty->propName, "CATEGORIES") == 0 || strcmp(theProperty->propName, "COMMENT") == 0)
+        {
+          validProperty = true;
+        }
+        if(strcmp(theProperty->propName, "CONTACT") == 0 || strcmp(theProperty->propName, "EXDATE") == 0 || strcmp(theProperty->propName, "RSTART") == 0 || strcmp(theProperty->propName, "RELATED") == 0)
+        {
+          validProperty = true;
+        }
+        if(strcmp(theProperty->propName, "RESOURCES") == 0 || strcmp(theProperty->propName, "RDATE") == 0 || strcmp(theProperty->propName, "X-PROP") == 0 || strcmp(theProperty->propName, "IANA-PROP") == 0)
+        {
+          validProperty = true;
+        }
+        /*class / created / description / geo /
+                         last-mod / location / organizer / priority /
+                         seq / status / summary / transp /
+                         url / recurid /*/
+
+        if(validProperty == false || classCount > 1 || createdCount> 1 || descriptionCount > 1 || geoCount >1 || lastmodCount > 1 || locationCount  > 1 || organizerCount>1 )
+        {
+          return INV_EVENT;
+        }
+
+        if(priorityCount > 1 || seqCount > 1 || statusCount > 1 || summaryCount > 1 || transpCount > 1 || urlCount > 1 || recuridCount >1)
+        {
+          return INV_EVENT;
+        }
+
+
       }
+
+      if( dtendExist == true && durationExist == true)
+      {
+        return INV_EVENT;
+      }
+
+
     }
 
     ListIterator iter2 = createIterator(theEvent->alarms);
@@ -389,18 +592,78 @@ ICalErrorCode validateCalendar(const Calendar* obj)
     while((elem2 = nextElement(&iter2)) != NULL){
       Alarm * theAlarm = (Alarm*) elem2;
 
-      if(strlen(theAlarm->action) > 200 || strlen(theAlarm->action) < 0 || theAlarm->properties == NULL || theAlarm->trigger == NULL ||strlen(theAlarm->trigger) < 1)
+      if(strlen(theAlarm->action) > 199 || strlen(theAlarm->action) < 1 || theAlarm->properties == NULL || theAlarm->trigger == NULL ||strlen(theAlarm->trigger) < 1)
       {
+
         return INV_ALARM;
       }
       if(getLength(theAlarm->properties) > 0){
         ListIterator iter4 = createIterator(theAlarm->properties);
         void* elem4;
+    /*
+               ; 'duration' and 'repeat' are both OPTIONAL,
+               ; and MUST NOT occur more than once each;
+               ; but if one occurs, so MUST the other.
+               ;
+               duration / repeat /
+               ;
+               ; The following is OPTIONAL,
+               ; but MUST NOT occur more than once.
+               ;
+               attach /
+               ;
+               ; The following is OPTIONAL,
+               ; and MAY occur more than once.
+               ;
+               x-prop / iana-prop
+               ;
+             )*/
+
+        bool durationExist = false;
+        bool repeatExist = false;
+        int durationCount = 0;
+        int repeatCount = 0;
+        int attachCount = 0;
         while((elem4 = nextElement(&iter4)) != NULL){
           Property * theProperty = (Property*) elem4;
-          if(strlen(theProperty->propName) > 200 || strlen(theProperty->propName) < 1 || strlen(theProperty->propDescr) < 1){
+          bool validProperty = false;
+          if(strlen(theProperty->propName) > 199 || strlen(theProperty->propName) < 1 || strlen(theProperty->propDescr) < 1){
             return INV_ALARM;
           }
+
+          if(strcmp(theProperty->propName, "DURATION") == 0)
+          {
+            durationExist = true;
+            durationCount++;
+            validProperty = true;
+          }
+
+          if(strcmp(theProperty->propName, "REPEAT") == 0)
+          {
+            repeatExist = true;
+            repeatCount++;
+            validProperty = true;
+          }
+
+          if(strcmp(theProperty->propName, "ATTACH") == 0)
+          {
+            attachCount++;
+            validProperty = true;
+          }
+
+          if(strcmp(theProperty->propName, "X-PROP") == 0 || strcmp(theProperty->propName, "IANA-PROP") == 0)
+          {
+            validProperty = true;
+          }
+
+          if(validProperty == false || durationCount > 1 || repeatCount >1)
+          {
+            return INV_ALARM;
+          }
+        }
+        if((durationExist == true && repeatExist == false) || (durationExist == false && repeatExist == true))
+        {
+          return INV_ALARM;
         }
       }
     }
@@ -605,22 +868,26 @@ List * icsParser(char * fileName)
   while (fgets(line, sizeof(line), fp)){
     if(line[strlen(line)-2] == '\r'){
       line[strlen(line)-2] = '\0';
+
     }else{
-      line[strlen(line)-1] = '\0';
+      line[strlen(line)] = '\0';
     }
 
     contentLine = malloc(strlen(line) + 1);
+
     strcpy(contentLine, line);
 
-    //If theres a space or tab
     if(line[0] == ' ' || line[0] == '\t'){
       char *ps = line;
       ps++;
-
       previousLine = realloc(previousLine, strlen(ps) + strlen(previousLine) + 2);
       strcat(previousLine, ps);
       free(contentLine);
-    } else if(line[0] == ';'){
+    }else if(line[0] == '.'){
+      previousLine = realloc(previousLine, strlen(line) + strlen(previousLine) + 2);
+      strcat(previousLine, line);
+      free(contentLine);
+    } else if(line[0] == ';' || strcmp(line, "") == 0 ){
       free(contentLine);
     } else {//No space or tab
       //if everything is folded already
@@ -671,9 +938,11 @@ ICalErrorCode createDateTime (char * dtLine, DateTime ** theDateTime)
 
 Property * createProperty(char * contentLine)
 {
+
   Property * newProperty = malloc(sizeof(Property));
   char *token = strtok(contentLine, determineDelimiter(contentLine));
   strcpy(newProperty->propName, token);
+
   token = strtok(NULL, "\n");
   newProperty = realloc(newProperty, sizeof(Property) + sizeof(char) *strlen(token) + 2);
   strcpy(newProperty->propDescr, token);
@@ -777,6 +1046,13 @@ ICalErrorCode createEvent(List * eventLines, Event **theEvent)
           freeList(alarmLines);
       }
     } else{
+      token = strtok(NULL, "\n");
+      if(token == NULL)
+      {
+        free(currDescr);
+        deleteEvent(newEvent);
+        return INV_EVENT;
+      }
       char * propertyLine = eventLines->printData(elem);
       Property * eventProperty = createProperty(propertyLine);
       insertBack(eventProperties, eventProperty);
@@ -836,6 +1112,13 @@ ICalErrorCode createAlarm(List * alarmLines, Alarm **theAlarm)
       strcpy(newAlarm->action,token);
       actionParsed = true;
     } else{
+      token = strtok(NULL, "\n");
+      if(token == NULL)
+      {
+        free(currDescr);
+        deleteAlarm(newAlarm);
+        return INV_ALARM;
+      }
       char * propertyLine = alarmLines->printData(elem);
       Property * alarmProperty = createProperty(propertyLine);
       insertBack(alarmProperties, alarmProperty);
