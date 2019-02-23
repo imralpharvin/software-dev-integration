@@ -1149,3 +1149,193 @@ void deleteContentLine(void *toBeDeleted)
 {
   free(toBeDeleted);
 }
+
+char* dtToJSON(DateTime prop)
+{
+  char * jString = malloc(sizeof(char) *1000);
+  char * utcF = "false";
+  char * utcT = "true";
+
+  if(prop.UTC == true)
+  {
+    sprintf(jString , "{\"date\":\"%s\",\"time\":\"%s\",\"isUTC\":%s}\"", prop.date, prop.time, utcT);
+      return jString;
+  }
+  sprintf(jString , "{\"date\":\"%s\",\"time\":\"%s\",\"isUTC\":%s}\"", prop.date, prop.time, utcF);
+  return jString;
+}
+
+char* eventToJSON(const Event* event)
+{
+    if(event == NULL)
+    {
+      return "{}";
+    }
+    char * dt = dtToJSON(event->startDateTime);
+    char * jString = malloc(sizeof(char) *1000);
+    int numProps = 3;
+    int numAlarms = 0;
+    char * summary = malloc(sizeof(char) * 1);
+    strcpy(summary, "");
+
+    ListIterator iter = createIterator(event->properties);
+    void* elem;
+    while((elem = nextElement(&iter)) != NULL)
+    {
+
+      Property * theProperty = (Property*) elem;
+      if(strcmp(theProperty->propName, "SUMMARY") == 0)
+      {
+        summary = realloc(summary, strlen(theProperty->propDescr) +1 );
+        strcpy(summary, theProperty->propDescr);
+      }
+      numProps ++;
+    }
+
+    ListIterator iter2 = createIterator(event->alarms);
+    void* elem2;
+    while((elem2 = nextElement(&iter2)) != NULL){
+      numAlarms ++;
+    }
+
+    sprintf(jString, "{\"startDT\":%s,\"numProps\":%d,\"numAlarms\":%d,\"summary\":\"%s\"}",dt, numProps, numAlarms, summary );
+    free(dt);
+    free(summary);
+    return jString;
+}
+
+char* eventListToJSON(const List* eventList)
+{
+  if((List *)eventList == NULL || getLength((List *)eventList) == 0)
+  {
+    return "[]";
+  }
+  char * jString = malloc(sizeof(char) *1000);
+
+  strcpy(jString, "[");
+
+  ListIterator iter = createIterator( (List *)eventList);
+  void* elem = nextElement(&iter);
+  Event * theEvent = (Event*) elem;
+  char * jEvent = eventToJSON(theEvent);
+  strcat(jString, jEvent );
+  free(jEvent);
+
+  while((elem = nextElement(&iter)) != NULL)
+  {
+    Event * theEvent = (Event*) elem;
+    strcat(jString, ",");
+    jEvent = eventToJSON(theEvent);
+    strcat(jString, jEvent);
+    free(jEvent);
+  }
+
+  strcat(jString, "]");
+
+
+  return jString;
+}
+
+char* calendarToJSON(const Calendar* cal)
+{
+
+  Calendar * obj = (Calendar*) cal;
+
+  if(obj == NULL)
+  {
+    return "{}";
+  }
+  char * jString = malloc(sizeof(char) *1000);
+  int numProps = 2;
+  int numEvents = 0;
+
+  ListIterator iter = createIterator(obj->properties);
+  void* elem;
+  while((elem = nextElement(&iter)) != NULL)
+  {
+    numProps ++;
+  }
+
+  ListIterator iter2 = createIterator(obj->events);
+  void* elem2;
+  while((elem2 = nextElement(&iter2)) != NULL){
+    numEvents ++;
+  }
+
+  sprintf(jString, "{\"version\":%.1f,\"prodID\":\"%s\",\"numProps\":%d,\"numEvents\":%d}", obj->version, obj->prodID, numProps, numEvents);
+
+  return jString;
+
+}
+
+Calendar* JSONtoCalendar(const char* str)
+{
+  if((char*) str == NULL)
+  {
+    return NULL;
+  }
+
+
+  Calendar * theCalendar = malloc(sizeof(Calendar));
+  theCalendar->version = 0;
+  strcpy(theCalendar->prodID, "");
+  theCalendar->properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
+  theCalendar->events = initializeList(&printEvent, &deleteEvent, &compareEvents);
+
+  char * jString = malloc(strlen((char*) str) + 1);
+  strcpy(jString, (char*) str);
+
+  char * token = strtok(jString, ":");
+  token = strtok(NULL, ",");
+
+
+  if(token == NULL || atof(token) == 0)
+  {
+    return NULL;
+  }
+
+  theCalendar->version = atof(token);
+  token = strtok(NULL, ":");
+  token = strtok(NULL, "\"");
+  strcpy(theCalendar->prodID, token);
+
+  free(jString);
+
+  return theCalendar;
+
+
+}
+
+Event* JSONtoEvent(const char* str)
+{
+  if((char*) str == NULL)
+  {
+    return NULL;
+  }
+
+  Event * theEvent = malloc(sizeof(Event));
+  strcpy(theEvent->UID, "");
+  theEvent->properties = initializeList(&printProperty, &deleteProperty, &compareProperties);
+  theEvent->alarms =  initializeList(&printAlarm, &deleteAlarm, &compareAlarms);
+
+  char * jString = malloc(strlen((char*) str) + 1);
+  strcpy(jString, (char*) str);
+
+  char * token = strtok(jString, ":");
+  token = strtok(NULL, "\"");
+  strcpy(theEvent->UID, token);
+
+  free(jString);
+
+  return theEvent;
+}
+
+void addEvent(Calendar* cal, Event* toBeAdded)
+{
+  if(cal == NULL || toBeAdded == NULL)
+  {
+    return;
+  }
+
+  insertBack(cal->events, toBeAdded);
+}

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "CalendarParser_A2temp2.h"
+#include "CalendarParser.h"
 
 void validatePrint(Calendar * pCalendar);
 
@@ -220,6 +220,53 @@ int main()
   err = createCalendar("testFiles/invAlarm/repeatDuration.ics", &pCalendar);
   validatePrint(pCalendar);
   deleteCalendar(pCalendar);
+
+  //Module 3
+  createCalendar("testCalEvtPropAlm.ics", &pCalendar);
+  theEvent = pCalendar->events->head->data;
+  DateTime dt = theEvent->creationDateTime;
+  printf("\ndtToJSON\n");
+  char * jString = dtToJSON(dt);
+  printf("%s\n", jString);
+  free(jString);
+
+  printf("eventToJSON\n");
+  jString = eventToJSON(theEvent);
+  printf("%s\n", jString);
+  free(jString);
+
+  List * eventList = pCalendar->events;
+  printf("eventListToJSON\n");
+  jString = eventListToJSON(eventList);
+  printf("%s\n", jString);
+  free(jString);
+
+  printf("calendarToJSON\n");
+  jString = calendarToJSON(pCalendar);
+  printf("%s\n", jString);
+  free(jString);
+
+    deleteCalendar(pCalendar);
+
+  printf("JSONtoCalendar\n");
+  Calendar * newCalendar;
+  newCalendar = JSONtoCalendar("{\"version\":2,\"prodID\":\"-//hacksw/handcal//NONSGML v1.0//EN\"}");
+  printf("VERSION: %.1f\n", newCalendar->version);
+  printf("PRODID: %s\n", newCalendar->prodID);
+
+
+
+  printf("JSONtoEvent\n");
+  Event * newEvent;
+  newEvent = JSONtoEvent("{\"UID\":\"1234\"}");
+  printf("UID: %s\n", newEvent->UID);
+
+  addEvent(newCalendar, newEvent);
+  newEvent = newCalendar->events->head->data;
+  printf("UID: %s\n", newEvent->UID);
+
+  deleteCalendar(newCalendar);
+
   return 0;
 }
 
