@@ -40,12 +40,36 @@ int main()
   printf("CREATE CALENDAR: %s", printErr);
   free(printErr);
 
-
   err = writeCalendar("calendar.ics", pCalendar);
   printErr = printError(err);
   printf("WRITE CALENDAR: %s", printErr);
   free(printErr);
+  deleteCalendar(pCalendar);
 
+  err = createCalendar("calendar.ics", &pCalendar);
+  printErr = printError(err);
+  printf("CREATE CALENDAR FROM WRITE: %s", printErr);
+  free(printErr);
+
+  err = writeCalendar("calendar2.ics", pCalendar);
+  printErr = printError(err);
+  printf("WRITE CALENDAR: %s", printErr);
+  free(printErr);
+
+  err = writeCalendar("calendar2.ics", NULL);
+  printErr = printError(err);
+  printf("WRITE CALENDAR: %s", printErr);
+  free(printErr);
+
+  err = writeCalendar(NULL, pCalendar);
+  printErr = printError(err);
+  printf("WRITE CALENDAR: %s", printErr);
+  free(printErr);
+
+  err = writeCalendar("", pCalendar);
+  printErr = printError(err);
+  printf("WRITE CALENDAR: %s", printErr);
+  free(printErr);
 
   //GOOD CALENDAR
   printf("Valid Calendar: OK | ");
@@ -129,8 +153,6 @@ int main()
   pCalendar = NULL;
   validatePrint(pCalendar);
   deleteCalendar(pCalendar);
-
-
 
   createCalendar("testCalEvtPropAlm.ics", &pCalendar);
   Event * theEvent = pCalendar->events->head->data;
