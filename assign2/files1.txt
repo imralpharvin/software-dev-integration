@@ -1,0 +1,17 @@
+testFiles/validCalendar/mLinePropTab1.ics
+testFiles/validCalendar/mLineTab1.ics
+testFiles/validCalendar/sourceCal.ics
+testFiles/validCalendar/sourceCal1.ics
+testFiles/validCalendar/testCalEvtPropAlm1.ics
+testFiles/validCalendar/testCalEvtProp.ics
+testFiles/validCalendar/testCalEvtPropAlm.ics
+testFiles/validCalendar/mLineProp1.ics
+testFiles/validCalendar/testCalSimpleNoUTC.ics
+testFiles/validCalendar/testCalEvtPropAlm3.ics
+testFiles/validCalendar/megaCal1.ics
+testFiles/validCalendar/megaCalFolded1.ics
+testFiles/validCalendar/testCalProp.ics
+testFiles/validCalendar/testCalEvts.ics
+testFiles/validCalendar/testCalSimpleUTC.ics
+testFiles/validCalendar/testCalSimpleUTCComments.ics
+testFiles/validCalendar/megaCal1.ics.orage

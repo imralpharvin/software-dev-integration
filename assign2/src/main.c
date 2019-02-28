@@ -32,14 +32,47 @@ int main()
   fclose(fp);
 
 //ASSIGNMENT 2
+
+
+FILE * fp1 = fopen("files1.txt", "r");
+
+char line1[200];
+while (fgets(line1, sizeof(line1), fp1)){
+
+  line1[strlen(line1)-1] = '\0';
+  printf("FILE: %s | ", line1);
+  Calendar * pCalendar;
+
+  ICalErrorCode error = createCalendar(line, &pCalendar);
+
+  if (error == OK)
+  {
+    ICalErrorCode err = writeCalendar("calendar.ics", pCalendar);
+    char * printErr = printError(err);
+    printf("WRITE CALENDAR: %s", printErr);
+    free(printErr);
+    deleteCalendar(pCalendar);
+
+  }
+
+    char * printErr = printError(error);
+    printf("%s", printErr);
+    free(printErr);
+
+}
+
+fclose(fp1);
   char * printErr;
 
-  Calendar * pCalendar;
+ Calendar * pCalendar;
   ICalErrorCode err = createCalendar("testCalEvtPropAlm.ics", &pCalendar);
   printErr = printError(err);
   printf("CREATE CALENDAR: %s", printErr);
   free(printErr);
-
+  char * printCal = printCalendar(pCalendar);
+  printf("\n%s", printCal);
+  free(printCal);
+/*
   err = writeCalendar("calendar.ics", pCalendar);
   printErr = printError(err);
   printf("WRITE CALENDAR: %s", printErr);
@@ -50,6 +83,9 @@ int main()
   printErr = printError(err);
   printf("CREATE CALENDAR FROM WRITE: %s", printErr);
   free(printErr);
+  printCal = printCalendar(pCalendar);
+  printf("\n%s", printCal);
+  free(printCal);*/
 
   err = writeCalendar("calendar2.ics", pCalendar);
   printErr = printError(err);
@@ -249,23 +285,31 @@ int main()
   DateTime dt = theEvent->creationDateTime;
   printf("\ndtToJSON\n");
   char * jString = dtToJSON(dt);
-  printf("%s\n", jString);
+  printf("%s\n\n", jString);
+  free(jString);
+
+  printf("\ndtToJSON2\n");
+  dt.UTC = false;
+  jString = dtToJSON(dt);
+  printf("%s\n\n", jString);
   free(jString);
 
   printf("eventToJSON\n");
   jString = eventToJSON(theEvent);
-  printf("%s\n", jString);
+  printf("%s\n\n", jString);
   free(jString);
 
   List * eventList = pCalendar->events;
   printf("eventListToJSON\n");
   jString = eventListToJSON(eventList);
-  printf("%s\n", jString);
+  printf("%s\n\n", jString);
   free(jString);
 
+
+  pCalendar->version = 4.6;
   printf("calendarToJSON\n");
   jString = calendarToJSON(pCalendar);
-  printf("%s\n", jString);
+  printf("%s\n\n", jString);
   free(jString);
 
     deleteCalendar(pCalendar);
@@ -273,18 +317,23 @@ int main()
   printf("JSONtoCalendar\n");
   Calendar * newCalendar;
   newCalendar = JSONtoCalendar("{\"version\":2,\"prodID\":\"-//hacksw/handcal//NONSGML v1.0//EN\"}");
-  printf("VERSION: %.1f\n", newCalendar->version);
-  printf("PRODID: %s\n", newCalendar->prodID);
-
+  printf("VERSION: %d\n", (int)newCalendar->version);
+  printf("PRODID: %s\n\n", newCalendar->prodID);
 
 
   printf("JSONtoEvent\n");
   Event * newEvent;
   newEvent = JSONtoEvent("{\"UID\":\"1234\"}");
   printf("UID: %s\n", newEvent->UID);
+  deleteEvent(newEvent);
+
+  printf("JSONtoEvent2\n");
+  newEvent = JSONtoEvent("{\"UID\":\"\"}");
+  printf("UID: %s\n\n", newEvent->UID);
+
 
   addEvent(newCalendar, newEvent);
-  newEvent = newCalendar->events->head->data;
+  newEvent = newCalendar->events->tail->data;
   printf("UID: %s\n", newEvent->UID);
 
   deleteCalendar(newCalendar);

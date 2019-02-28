@@ -382,11 +382,11 @@ ICalErrorCode validateCalendar(const Calendar* obj)
       return INV_EVENT;
     }
     DateTime creationDT = theEvent->creationDateTime;
-    if(strlen(creationDT.date) > 8 || strlen(creationDT.date) < 1 || strlen(creationDT.time) < 1 || strlen(creationDT.time) > 6) {
+    if(strlen(creationDT.date) !=8 || strlen(creationDT.time) != 6) {
       return INV_EVENT;
     }
     DateTime startDT = theEvent->startDateTime;
-    if(strlen(startDT.date) > 8 || strlen(startDT.date) < 1 || strlen(startDT.time) < 1 || strlen(startDT.time) > 6) {
+    if(strlen(startDT.date) != 8 || strlen(startDT.time) != 6) {
       return INV_EVENT;
     }
     if(getLength(theEvent->properties) > 0){
@@ -1055,10 +1055,10 @@ char* dtToJSON(DateTime prop)
   char * utcT = "true";
 
   if(prop.UTC == true){
-    sprintf(jString , "{\"date\":\"%s\",\"time\":\"%s\",\"isUTC\":%s}\"", prop.date, prop.time, utcT);
+    sprintf(jString , "{\"date\":\"%s\",\"time\":\"%s\",\"isUTC\":%s}", prop.date, prop.time, utcT);
       return jString;
   }
-  sprintf(jString , "{\"date\":\"%s\",\"time\":\"%s\",\"isUTC\":%s}\"", prop.date, prop.time, utcF);
+  sprintf(jString , "{\"date\":\"%s\",\"time\":\"%s\",\"isUTC\":%s}", prop.date, prop.time, utcF);
   return jString;
 }
 
@@ -1151,7 +1151,7 @@ char* calendarToJSON(const Calendar* cal)
     numEvents ++;
   }
 
-  sprintf(jString, "{\"version\":%.1f,\"prodID\":\"%s\",\"numProps\":%d,\"numEvents\":%d}", obj->version, obj->prodID, numProps, numEvents);
+  sprintf(jString, "{\"version\":%d,\"prodID\":\"%s\",\"numProps\":%d,\"numEvents\":%d}", (int)obj->version, obj->prodID, numProps, numEvents);
 
   return jString;
 
@@ -1204,7 +1204,16 @@ Event* JSONtoEvent(const char* str)
 
   char * token = strtok(jString, ":");
   token = strtok(NULL, "\"");
-  strcpy(theEvent->UID, token);
+
+
+  if(strcmp(token, "}") == 0 )
+  {
+    strcpy(theEvent->UID, "");
+  }
+  else
+  {
+    strcpy(theEvent->UID, token);
+  }
 
   free(jString);
 
