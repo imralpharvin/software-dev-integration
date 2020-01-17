@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Calendar Viewer</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Calendar Viewer">
+  <meta name="keywords" content="Calendar Viewer">
+  <meta name="author" content="Ralph Arvin De Castro">
+  <!-- Load jquery, bootstrap -->
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+    crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+    crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+    crossorigin="anonymous">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+    crossorigin="anonymous"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" type="text/css" href="/style.css">
+  <link href="data:image/x-icon;base64,AAABAAEAEBAQAAAAAAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAD/xjgAAAAAAN6sMQDJmygA////AEVFRQCUdisAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARERERERERERVVVVVVVVVVFRERERERERUVDMzMzMzNFRUNDQ0NDQ0VFQzMzMzMzRUVDQ0NDQ0NFRUMzMzMzM0VFRERDQ0NDRUVEREMzMzNFRUREREREREVFAAAAAAAABUUiIiIiIiIlRWZmZmZmZmVFVVVVVVVVVUEREREREREREAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//wAA"
+    rel="icon" type="image/x-icon" />
+  <!-- Custom CSS End -->
+</head>
+
+<body>
+  <h2 class="display-3">Calendar Viewer</h2>
+  <!-- Status Panel-->
+  <hr>
+  <div id="statusPanel" class="card">
+    <div class="card-header">
+      Status
+    </div>
+    <div class="card-body">
+      <div id="statusBoard" class="statusBoard">
+      </div>
+      <button id="clearMessages" type="button" class="btn">Clear</button>
+    </div>
+  </div>
+  <hr>
+  <!-- File Log Panel-->
+  <div id="fileLogPanel" class="card">
+    <div class="card-header">
+      Files
+    </div>
+    <div class="card-body">
+      List of Files
+      <div id="noFiles"></div>
+      <div class="anyTable">
+        <table id="fileLogTable" class="table table-sm table-hover table-striped" width='90%'></table>
+
+      </div>
+
+      <form id='uploadForm' action='/upload' method='post' encType="multipart/form-data">
+        <input type='file' id="realButton" hidden=hidden value='Upload File' name='uploadFile' />
+        <button id="uploadButton" type="button" class="btn">Upload File</button>
+        <span id="customText"> No file chosen. </span>
+        <input type='submit' id="realSubmit" class="btn" value='Submit' />
+      </form>
+    </div>
+  </div>
+  <hr>
+  <!-- Calendar View Panel-->
+  <div class="card">
+    <div class="card-header">
+      Calendar
+    </div>
+    <div class="card-body">
+      Select Filename:
+      <form ref='getFilename' id='getFilename'>
+        <select id='dropDown' class="form-control form-control-lg">
+        </select>
+      </form>
+      <div id='calendarShow'>
+        <div class="anyTable">
+          <table id="eventListTable" class="table table-sm table-hover table-striped"></table>
+        </div>
+
+
+        <h5>Alarms</h5>
+        Select an event<br>
+        <select id='dropDownEvent'>
+        </select>
+        <div id="alarmList"></div>
+
+
+        <h5>Properties</h5>
+        Select an event to show properties. Also showed in Status Panel<br>
+        <select id='dropDownProperties'>
+        </select>
+        <div id="propertyList"></div>
+        <form id="addEventForm">
+
+          <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample"
+            aria-expanded="false" aria-controls="collapseExample">
+            Add an event
+          </button>
+          </p>
+          <div class="collapse" id="collapseExample">
+            <div class="card card-body">
+              <b>Add Event</b><br>
+              Event Title (UID):<br>
+              <input type="text"  class="form-control"  id="addUID" name="uid" required><br>
+              Date:<br>
+              <input type="date"  class="form-control"  id="addStartDate" name="startTime" required><br>
+              Time:<br>
+              <input type="time"  class="form-control"  id="addStartTime" name="startTime" min="0:00" max="23:59" required><br>
+
+              Timezone:<br>
+              <select name="UTC"  class="form-control"  id="addUTC" required>
+                <option value="">Select Timezone</option>
+                <option value=false>UTC-12:00</option>
+                <option value=false>UTC-11:00</option>
+                <option value=false>UTC-10:00</option>
+                <option value=false>UTC-09:00</option>
+                <option value=false>UTC-08:00</option>
+                <option value=false>UTC-07:00</option>
+                <option value=false>UTC-06:00</option>
+                <option value=false>UTC-05:00</option>
+                <option value=false>UTC-04:00</option>
+                <option value=false>UTC-03:00</option>
+                <option value=false>UTC-02:00</option>
+                <option value=false>UTC-01:00</option>
+                <option value=true>UTC 00:00</option>
+                <option value=false>UTC+01:00</option>
+                <option value=false>UTC+02:00</option>
+                <option value=false>UTC+03:00</option>
+                <option value=false>UTC+04:00</option>
+                <option value=false>UTC+05:00</option>
+                <option value=false>UTC+06:00</option>
+                <option value=false>UTC+07:00</option>
+                <option value=false>UTC+08:00</option>
+                <option value=false>UTC+09:00</option>
+                <option value=false>UTC+10:00</option>
+                <option value=false>UTC+11:00</option>
+                <option value=false>UTC+12:00</option>
+                <option value=false>UTC+13:00</option>
+                <option value=false>UTC+14:00</option>
+              </select><br>
+
+              <center><input type="submit" id="submitAddEvent" value="Add Event" class="btn"></center>
+            </div>
+
+          </div>
+        </form>
+
+      </div>
+
+    </div>
+
+  </div>
+  <hr>
+  <div class="card w-100" style="width: 18rem;">
+    <div class="card-header">
+      Create Calendar
+    </div>
+    <div class="card-body">
+      <form id="createCalendarForm">
+        Filename:<br>
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" id="filename" name="filename" required>
+          <div class="input-group-append">
+            <span class="input-group-text" id="basic-addon2">.ics</span>
+          </div>
+        </div>
+        Version:<br>
+        <input type="number"  class="form-control"  step="any" id="version" name="version" required><br>
+        Production ID:<br>
+        <input type="text"  class="form-control"  id="prodID" name="prodID" required><br>
+        <form>
+          <b>Event No 1</b><br>
+          Event Title (UID):<br>
+          <input type="text"  class="form-control"  id="uid" name="uid" required><br>
+          Date:<br>
+          <input type="date"  class="form-control"  id="startDate" name="startTime" required><br>
+          Time:<br>
+          <input type="time"  class="form-control"  id="startTime" name="startTime" min="0:00" max="23:59" required><br>
+
+          Timezone:<br>
+          <select name="UTC"  class="form-control"  id="UTC" required>
+            <option value="">Select Timezone</option>
+            <option value=false>UTC-12:00</option>
+            <option value=false>UTC-11:00</option>
+            <option value=false>UTC-10:00</option>
+            <option value=false>UTC-09:00</option>
+            <option value=false>UTC-08:00</option>
+            <option value=false>UTC-07:00</option>
+            <option value=false>UTC-06:00</option>
+            <option value=false>UTC-05:00</option>
+            <option value=false>UTC-04:00</option>
+            <option value=false>UTC-03:00</option>
+            <option value=false>UTC-02:00</option>
+            <option value=false>UTC-01:00</option>
+            <option value=true>UTC 00:00</option>
+            <option value=false>UTC+01:00</option>
+            <option value=false>UTC+02:00</option>
+            <option value=false>UTC+03:00</option>
+            <option value=false>UTC+04:00</option>
+            <option value=false>UTC+05:00</option>
+            <option value=false>UTC+06:00</option>
+            <option value=false>UTC+07:00</option>
+            <option value=false>UTC+08:00</option>
+            <option value=false>UTC+09:00</option>
+            <option value=false>UTC+10:00</option>
+            <option value=false>UTC+11:00</option>
+            <option value=false>UTC+12:00</option>
+            <option value=false>UTC+13:00</option>
+            <option value=false>UTC+14:00</option>
+
+
+          </select><br>
+
+
+          <center><input type="submit" id="realSubmitForm" value="Create Calendar" class="btn"></center>
+    </div>
+  </div>
+  <hr>
+  <!-- Leave me at the bottom of body -->
+  <script src="/index.js"></script>
+</body>
+
+</html>
